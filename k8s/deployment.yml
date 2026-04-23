@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: angular_web
+  namespace: grupo11        # ← el profe te asigna este valor
+  labels:
+    app: angular-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: angular_web
+  template:
+    metadata:
+      labels:
+        app: angular_web
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: angular-app
+        image: <url imagen>:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: angular_web
+  namespace: grupo11
+  labels:
+    app: angular_web
+spec:
+  selector:
+    app: angular_web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: angular_web
+  namespace: grupo11
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: grupo11.inphotech.co
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: angular_web
+            port:
+              number: 80

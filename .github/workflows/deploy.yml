@@ -31,15 +31,15 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify GHCR access
-        run: docker pull ghcr.io/${OWNER_LC}/angular-web:latest || true
+        run: docker pull ghcr.io/advsnts/angular-web:latest || true
 
       - name: Build Docker image
         run: |
           docker build \
-          -t ghcr.io/${OWNER_LC}/angular-web:latest .
+          -t ghcr.io/advsnts/angular-web:latest .
 
       - name: Push Docker image
-        run: docker push ghcr.io/${OWNER_LC}/angular-web:latest
+        run: docker push ghcr.io/advsnts/angular-web:latest
 
   deploy-onpremise:
     name: Deploy on MicroK8s On-Premise

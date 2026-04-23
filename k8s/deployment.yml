@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: angular-web
   namespace: grupo11
+  labels:
+    app: angular-web
 spec:
   replicas: 1
   selector:

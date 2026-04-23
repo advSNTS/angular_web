@@ -15,10 +15,13 @@ jobs:
 
     steps:
       - name: Mostrar rama actual
-        run: echo "Rama actual: ${{ github.ref }}"
+        run: echo "Rama actual:${{ github.ref }}"
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
+
+      - name: Set OWNER_LC
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -27,14 +30,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
-        env:
-          IMAGE: ghcr.io/${{ github.repository }}
+      - name: Verify GHCR access
+        run: docker pull ghcr.io/${OWNER_LC}/angular-web:latest || true
+
+      - name: Build Docker image
         run: |
-          IMAGE_LOWER=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
-          docker build -t ${IMAGE_LOWER}:latest -t ${IMAGE_LOWER}:${{ github.sha }} .
-          docker push ${IMAGE_LOWER}:latest
-          docker push ${IMAGE_LOWER}:${{ github.sha }}
+          docker build \
+          -t ghcr.io/${OWNER_LC}/angular-web:latest .
+
+      - name: Push Docker image
+        run: docker push ghcr.io/${OWNER_LC}/angular-web:latest
 
   deploy-onpremise:
     name: Deploy on MicroK8s On-Premise
@@ -43,16 +48,10 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Apply Kubernetes manifests
-        run: sudo microk8s kubectl apply -f k8s.yaml
+      - name: Apply Kubernetes deployment
+        run: sudo microk8s kubectl apply -f k8s/deployment.yaml
 
-      - name: Update image to latest SHA
-        run: |
-          sudo microk8s kubectl set image deployment/angular-web \
-            angular-web=ghcr.io/advsnts/angular-web:${{ github.sha }} \
-            -n grupo11
-
-      - name: Wait for rollout
-        run: sudo microk8s kubectl rollout status deployment/angular-web -n grupo11
+      - name: Restart Kubernetes deployment
+        run: sudo microk8s kubectl rollout restart deployment/angular-web -n grupo11

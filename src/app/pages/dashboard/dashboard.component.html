@@ -1,0 +1,32 @@
+<main class="dashboard-shell">
+  <section class="panel">
+    <p class="eyebrow">Sesión activa</p>
+    <h1>Bienvenido, {{ session?.nombre }}</h1>
+    <p class="lead">
+      La interfaz quedó lista para trabajar con el backend actual. La información de sesión
+      que ves aquí proviene de la respuesta de <code>/empleados</code>.
+    </p>
+
+    <div class="grid">
+      <div>
+        <span>Empresa</span>
+        <strong>{{ session?.nombreEmpresa || 'Pendiente de retorno del backend' }}</strong>
+      </div>
+      <div>
+        <span>NIT</span>
+        <strong>{{ session?.nitEmpresa }}</strong>
+      </div>
+      <div>
+        <span>Documento</span>
+        <strong>{{ session?.tipoDocumento }} {{ session?.numeroDocumento }}</strong>
+      </div>
+      <div>
+        <span>Correo</span>
+        <strong>{{ session?.correo }}</strong>
+      </div>
+    </div>
+
+    <button type="button" (click)="cerrarSesion()">Cerrar sesión</button>
+  </section>
+</main>
+

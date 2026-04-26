@@ -1,0 +1,51 @@
+<main class="auth-shell">
+  <section class="hero">
+    <p class="eyebrow">Angular Web</p>
+    <h1>Acceso al sistema</h1>
+    <p class="lead">
+      El backend actual no tiene un endpoint real de autenticación. Por ahora, el login valida
+      solo <code>correo</code> y <code>contraseña</code> con el usuario demo configurado.
+    </p>
+
+    <div class="notes">
+      <article>
+        <span>1</span>
+        <p>Solo necesitas correo y contraseña.</p>
+      </article>
+      <article>
+        <span>2</span>
+        <p>Si las credenciales coinciden, entras al dashboard.</p>
+      </article>
+      <article>
+        <span>3</span>
+        <p>Cuando exista JWT, cambiamos este servicio sin tocar la vista.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Ingresar</h2>
+    <p class="subtle">Usa el usuario demo: <code>juan@ejemplo.com</code> / <code>123456</code></p>
+
+    <form [formGroup]="loginForm" (ngSubmit)="ingresar()" novalidate>
+      <label>
+        <span>Correo</span>
+        <input type="email" formControlName="correo" placeholder="juan@ejemplo.com" />
+      </label>
+
+      <label>
+        <span>Contraseña</span>
+        <input type="password" formControlName="contrasena" placeholder="123456" />
+      </label>
+
+      @if (error) {
+        <p class="error">{{ error }}</p>
+      }
+
+      <button type="submit" [disabled]="cargando">
+        {{ cargando ? 'Validando...' : 'Entrar' }}
+      </button>
+    </form>
+  </section>
+</main>
+

@@ -3,39 +3,39 @@
     <p class="eyebrow">Angular Web</p>
     <h1>Acceso al sistema</h1>
     <p class="lead">
-      El backend actual no tiene un endpoint real de autenticación. Por ahora, el login valida
-      solo <code>correo</code> y <code>contraseña</code> con el usuario demo configurado.
+      El acceso ahora consulta el backend real para validar el correo y la contraseña contra
+      los registros de la base de datos.
     </p>
 
     <div class="notes">
       <article>
         <span>1</span>
-        <p>Solo necesitas correo y contraseña.</p>
+        <p>Ingresa el correo y la contraseña guardados en el sistema.</p>
       </article>
       <article>
         <span>2</span>
-        <p>Si las credenciales coinciden, entras al dashboard.</p>
+        <p>Si existen en la base de datos, la sesión se crea automáticamente.</p>
       </article>
       <article>
         <span>3</span>
-        <p>Cuando exista JWT, cambiamos este servicio sin tocar la vista.</p>
+        <p>La vista no cambia cuando se ajuste el contrato del backend.</p>
       </article>
     </div>
   </section>
 
   <section class="card">
     <h2>Ingresar</h2>
-    <p class="subtle">Usa el usuario demo: <code>juan@ejemplo.com</code> / <code>123456</code></p>
+    <p class="subtle">El formulario consulta la API de autenticación.</p>
 
     <form [formGroup]="loginForm" (ngSubmit)="ingresar()" novalidate>
       <label>
         <span>Correo</span>
-        <input type="email" formControlName="correo" placeholder="juan@ejemplo.com" />
+        <input type="email" formControlName="correo" placeholder="correo@empresa.com" />
       </label>
 
       <label>
         <span>Contraseña</span>
-        <input type="password" formControlName="contrasena" placeholder="123456" />
+        <input type="password" formControlName="contrasena" placeholder="********" />
       </label>
 
       @if (error) {
@@ -48,4 +48,3 @@
     </form>
   </section>
 </main>
-

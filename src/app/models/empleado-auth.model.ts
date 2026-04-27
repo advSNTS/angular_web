@@ -11,13 +11,5 @@ export interface EmpleadoAuthResponse {
   tipoDocumento: string;
   numeroDocumento: string;
   correo: string;
-}
-
-export interface DemoEmployee {
-  nitEmpresa: string;
-  nombre: string;
-  tipoDocumento: string;
-  numeroDocumento: string;
-  credencial: LoginCredentials;
-  nombreEmpresa: string;
+  token?: string;
 }

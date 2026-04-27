@@ -50,10 +50,9 @@ export class LoginComponent implements OnInit {
       .pipe(finalize(() => (this.cargando = false)))
       .subscribe({
         next: () => void this.router.navigateByUrl('/dashboard'),
-        error: () => {
-          this.error = 'Credenciales inválidas.';
+        error: (err: Error) => {
+          this.error = err.message || 'Credenciales inválidas.';
         }
       });
   }
 }
-

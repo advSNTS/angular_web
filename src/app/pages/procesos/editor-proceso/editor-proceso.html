@@ -1,1 +1,52 @@
-<p>editor-proceso works!</p>
+<div class="editor-shell">
+  <div class="card">
+
+    <div class="card-header">
+      <button class="btn-volver" (click)="volver()">← Volver</button>
+      <div>
+        <p class="eyebrow">{{ esEdicion ? 'Editar' : 'Nuevo' }} Proceso</p>
+        <h1>{{ esEdicion ? 'Modificar Proceso' : 'Crear Proceso' }}</h1>
+      </div>
+    </div>
+
+    <div *ngIf="error" class="alerta-error"> {{ error }}</div>
+    <div *ngIf="exito" class="alerta-exito">{{ exito }}</div>
+
+    <form (ngSubmit)="guardar()">
+
+      <label>
+        <span>Nombre del proceso *</span>
+        <input [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Proceso de Ventas" required>
+      </label>
+
+      <label>
+        <span>Descripción</span>
+        <textarea [(ngModel)]="form.descripcion" name="descripcion" placeholder="Describe el proceso..." rows="3"></textarea>
+      </label>
+
+      <label>
+        <span>Categoría *</span>
+        <select [(ngModel)]="form.categoria" name="categoria" required>
+          <option value="">Selecciona una categoría</option>
+          <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
+        </select>
+      </label>
+
+      <div class="toggles">
+        <label class="toggle-item">
+          <input type="checkbox" [(ngModel)]="form.borrador" name="borrador">
+          <span> Guardar como borrador</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" [(ngModel)]="form.activo" name="activo">
+          <span> Proceso activo</span>
+        </label>
+      </div>
+
+      <button type="submit" [disabled]="guardando">
+        {{ guardando ? 'Guardando...' : (esEdicion ? '💾 Guardar Cambios' : '🚀 Crear Proceso') }}
+      </button>
+
+    </form>
+  </div>
+</div>

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProcesoService } from '../../../services/proceso.service'; 
 import { ProcesoResponse } from '../../../models/proceso';      
+import { Router } from '@angular/router';
+
 
 @Component({
   selector: 'app-lista-procesos',
@@ -21,7 +23,11 @@ export class ListaProcesosComponent implements OnInit {
   filtroCategoria = '';
   procesoSeleccionado: ProcesoResponse | null = null;
 
-  constructor(private procesoService: ProcesoService) {}
+  constructor(
+    private procesoService: ProcesoService,
+    private router: Router
+  ) {}
+
 
   ngOnInit(): void {
     // DATOS MOCK (para probar sin backend)
@@ -34,7 +40,6 @@ export class ListaProcesosComponent implements OnInit {
     this.procesosFiltrados = this.procesos;
     this.cargando = false;
 
-    //  Cuando conectes backend, usa esto en lugar del mock:
     // this.cargarProcesos();
   }
 
@@ -65,7 +70,7 @@ export class ListaProcesosComponent implements OnInit {
   }
 
   seleccionar(proceso: ProcesoResponse): void {
-    this.procesoSeleccionado = proceso;
+    this.router.navigate(['/procesos', proceso.id, 'detalle']);
   }
 
   get categorias(): string[] {

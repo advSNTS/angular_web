@@ -42,8 +42,6 @@ kind: Ingress
 metadata:
   name: angular-web
   namespace: grupo11
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:

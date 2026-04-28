@@ -25,7 +25,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copiar build generado de Angular
 # Ajusta la ruta según el nombre real del proyecto
-COPY --from=build /app/dist/angular_web/browser /usr/share/nginx/html
+COPY --from=build /app/dist/angular_web/browser /usr/share/nginx/html/front
 
 EXPOSE 80
 

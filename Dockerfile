@@ -12,8 +12,8 @@ RUN npm ci
 # Copiar el resto del proyecto
 COPY . .
 
-# Compilar Angular en modo producción
-RUN npm run build -- --configuration production
+# Compilar Angular en modo producción para servir la app bajo /front/
+RUN npm run build -- --configuration production --base-href /front/ --deploy-url /front/
 
 # =========================
 # Etapa 2: runtime con Nginx

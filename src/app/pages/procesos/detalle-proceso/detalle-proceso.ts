@@ -5,7 +5,15 @@ import { ProcesoService } from '../../../services/proceso.service';
 import { ActividadService } from '../../../services/actividad.service';
 import { GatewayService } from '../../../services/gateway.service';
 import { ArcoService } from '../../../services/arco.service';
-import { ProcesoResponse, ActividadResponse, GatewayResponse, ArcoResponse, HistorialProceso } from '../../../models/proceso';
+import {
+  ProcesoResponse,
+  ActividadResponse,
+  GatewayResponse,
+  ArcoResponse,
+  HistorialProceso
+} from '../../../models/proceso';
+
+type HistorialVista = HistorialProceso & { campo?: string };
 
 @Component({
   selector: 'app-detalle-proceso',
@@ -14,19 +22,29 @@ import { ProcesoResponse, ActividadResponse, GatewayResponse, ArcoResponse, Hist
   styleUrl: './detalle-proceso.css'
 })
 export class DetalleProcesoComponent implements OnInit {
-
   proceso: ProcesoResponse | null = null;
   actividades: ActividadResponse[] = [];
   gateways: GatewayResponse[] = [];
   arcos: ArcoResponse[] = [];
-  historial: HistorialProceso[] = [];
+  historial: HistorialVista[] = [];
   cargando = true;
   tabActiva: 'flujo' | 'historial' = 'flujo';
 
-  // Mock historial
-  private historialMock: HistorialProceso[] = [
-    { id: 1, tipoAccion: 'EDICION', fechaCambio: '2026-04-20T10:30:00', valorAnterior: '{"nombre":"Ventas v1"}', valorNuevo: '{"nombre":"Proceso de Ventas"}' },
-    { id: 2, tipoAccion: 'EDICION', fechaCambio: '2026-04-22T14:15:00', valorAnterior: '{"borrador":true}', valorNuevo: '{"borrador":false}' },
+  private historialMock: HistorialVista[] = [
+    {
+      id: 1,
+      tipoAccion: 'EDICION',
+      fechaCambio: '2026-04-20T10:30:00',
+      valorAnterior: '{"nombre":"Ventas v1"}',
+      valorNuevo: '{"nombre":"Proceso de Ventas"}'
+    },
+    {
+      id: 2,
+      tipoAccion: 'EDICION',
+      fechaCambio: '2026-04-22T14:15:00',
+      valorAnterior: '{"borrador":true}',
+      valorNuevo: '{"borrador":false}'
+    }
   ];
 
   constructor(
@@ -43,21 +61,40 @@ export class DetalleProcesoComponent implements OnInit {
     this.cargarDatos(id);
   }
 
+  private historialKey(procesoId: number): string {
+    return `historial_proceso_${procesoId}`;
+  }
+
+  private leerHistorialLocal(procesoId: number): HistorialVista[] {
+    try {
+      const raw = localStorage.getItem(this.historialKey(procesoId));
+      if (!raw) return [];
+      return JSON.parse(raw) as HistorialVista[];
+    } catch {
+      return [];
+    }
+  }
+
   cargarDatos(id: number): void {
-    // Mock proceso — datos quemados 
     this.proceso = {
-      id, nombre: 'Proceso de Ventas', descripcion: 'Gestión del ciclo completo de ventas',
-      categoria: 'Comercial', borrador: false, activo: true
+      id,
+      nombre: 'Proceso de Ventas',
+      descripcion: 'Gestión del ciclo completo de ventas',
+      categoria: 'Comercial',
+      borrador: false,
+      activo: true
     };
-    this.historial = this.historialMock;
+
+    const historialLocal = this.leerHistorialLocal(id);
+    this.historial = [...historialLocal, ...this.historialMock];
+
     this.cargando = false;
 
-    // Carga actividades, gateways y arcos
-    this.actividadService.obtenerPorProceso(id).subscribe(d => this.actividades = d);
-    this.gatewayService.obtenerPorProceso(id).subscribe(d => this.gateways = d);
-    this.arcoService.obtenerPorProceso(id).subscribe(d => this.arcos = d);
+    this.actividadService.obtenerPorProceso(id).subscribe(d => (this.actividades = d));
+    this.gatewayService.obtenerPorProceso(id).subscribe(d => (this.gateways = d));
+    this.arcoService.obtenerPorProceso(id).subscribe(d => (this.arcos = d));
 
-    /* BACKEND: 
+    /* BACKEND:
     this.procesoService.obtenerPorId(id).subscribe({
       next: (p) => { this.proceso = p; this.cargando = false; }
     });
@@ -82,8 +119,11 @@ export class DetalleProcesoComponent implements OnInit {
 
   parsearJson(json: string | null): string {
     if (!json) return '—';
-    try { return JSON.stringify(JSON.parse(json), null, 2); }
-    catch { return json; }
+    try {
+      return JSON.stringify(JSON.parse(json), null, 2);
+    } catch {
+      return json;
+    }
   }
 
   irAEditor(): void {

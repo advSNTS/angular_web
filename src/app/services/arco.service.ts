@@ -25,6 +25,10 @@ export class ArcoService {
     return this.http.post<ArcoResponse>(this.apiUrl, dto);
   }
 
+  actualizar(id: number, dto: ArcoRequest): Observable<ArcoResponse> {
+    return this.http.put<ArcoResponse>(`${this.apiUrl}/${id}`, dto);
+  }
+
   eliminar(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }

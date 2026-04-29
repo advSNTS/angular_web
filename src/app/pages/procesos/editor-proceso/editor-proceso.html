@@ -1,52 +1,188 @@
 <div class="editor-shell">
   <div class="card">
-
     <div class="card-header">
-      <button class="btn-volver" (click)="volver()">← Volver</button>
+      <button class="btn-volver" type="button" (click)="volver()">← Volver</button>
       <div>
         <p class="eyebrow">{{ esEdicion ? 'Editar' : 'Nuevo' }} Proceso</p>
         <h1>{{ esEdicion ? 'Modificar Proceso' : 'Crear Proceso' }}</h1>
       </div>
     </div>
 
-    <div *ngIf="error" class="alerta-error"> {{ error }}</div>
+    <div *ngIf="error" class="alerta-error">{{ error }}</div>
     <div *ngIf="exito" class="alerta-exito">{{ exito }}</div>
 
     <form (ngSubmit)="guardar()">
+      <section class="form-section">
+        <h3>Datos generales</h3>
 
-      <label>
-        <span>Nombre del proceso *</span>
-        <input [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Proceso de Ventas" required>
-      </label>
-
-      <label>
-        <span>Descripción</span>
-        <textarea [(ngModel)]="form.descripcion" name="descripcion" placeholder="Describe el proceso..." rows="3"></textarea>
-      </label>
-
-      <label>
-        <span>Categoría *</span>
-        <select [(ngModel)]="form.categoria" name="categoria" required>
-          <option value="">Selecciona una categoría</option>
-          <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
-        </select>
-      </label>
-
-      <div class="toggles">
-        <label class="toggle-item">
-          <input type="checkbox" [(ngModel)]="form.borrador" name="borrador">
-          <span> Guardar como borrador</span>
+        <label>
+          <span>Nombre del proceso *</span>
+          <input [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Proceso de Ventas" required />
         </label>
-        <label class="toggle-item">
-          <input type="checkbox" [(ngModel)]="form.activo" name="activo">
-          <span> Proceso activo</span>
+
+        <label>
+          <span>Descripción</span>
+          <textarea [(ngModel)]="form.descripcion" name="descripcion" placeholder="Describe el proceso..." rows="3"></textarea>
         </label>
-      </div>
+
+        <label>
+          <span>Categoría *</span>
+          <select [(ngModel)]="form.categoria" name="categoria" required>
+            <option value="">Selecciona una categoría</option>
+            <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
+          </select>
+        </label>
+
+        <div class="toggles">
+          <label class="toggle-item">
+            <input type="checkbox" [(ngModel)]="form.borrador" name="borrador" />
+            <span>Guardar como borrador</span>
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" [(ngModel)]="form.activo" name="activo" />
+            <span>Proceso activo</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="section-title-row">
+          <h3>Actividades</h3>
+          <button class="btn-action" type="button" (click)="agregarActividad()">+ Agregar actividad</button>
+        </div>
+
+        <div *ngIf="!actividades.length" class="vacio">No hay actividades.</div>
+
+        <article *ngFor="let a of actividades; index as i" class="flow-card">
+          <div class="flow-fields">
+            <label>
+              <span>Nodo ID</span>
+              <input
+                type="number"
+                [(ngModel)]="a.nodoId"
+                [name]="'actNodo' + i"
+                min="1"
+                (ngModelChange)="onActividadChange()"
+              />
+            </label>
+
+            <label>
+              <span>Nombre nodo *</span>
+              <input
+                [(ngModel)]="a.nombreNodo"
+                [name]="'actNombre' + i"
+                required
+                (ngModelChange)="onActividadChange()"
+              />
+            </label>
+
+            <label>
+              <span>Descripción *</span>
+              <input
+                [(ngModel)]="a.descripcion"
+                [name]="'actDesc' + i"
+                required
+              />
+            </label>
+          </div>
+
+          <div class="flow-actions">
+            <button type="button" class="btn-delete" (click)="eliminarActividad(i)">Eliminar</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="form-section">
+        <div class="section-title-row">
+          <h3>Gateways</h3>
+          <button class="btn-action" type="button" (click)="agregarGateway()">+ Agregar gateway</button>
+        </div>
+
+        <div *ngIf="!gateways.length" class="vacio">No hay gateways.</div>
+
+        <article *ngFor="let g of gateways; index as i" class="flow-card">
+          <div class="flow-fields">
+            <label>
+              <span>Nodo ID</span>
+              <input
+                type="number"
+                [(ngModel)]="g.nodoId"
+                [name]="'gwNodo' + i"
+                min="1"
+                (ngModelChange)="onGatewayChange()"
+              />
+            </label>
+
+            <label>
+              <span>Nombre nodo *</span>
+              <input
+                [(ngModel)]="g.nombreNodo"
+                [name]="'gwNombre' + i"
+                required
+                (ngModelChange)="onGatewayChange()"
+              />
+            </label>
+
+            <label>
+              <span>Tipo</span>
+              <select
+                [(ngModel)]="g.tipoGateway"
+                [name]="'gwTipo' + i"
+                (ngModelChange)="onGatewayChange()"
+              >
+                <option value="XOR">XOR</option>
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="flow-actions">
+            <button type="button" class="btn-delete" (click)="eliminarGateway(i)">Eliminar</button>
+          </div>
+        </article>
+      </section>
+
+      <section class="form-section">
+        <div class="section-title-row">
+          <h3>Arcos de flujo</h3>
+          <button class="btn-action" type="button" (click)="agregarArco()">+ Agregar arco</button>
+        </div>
+
+        <div *ngIf="!arcos.length" class="vacio">No hay arcos.</div>
+
+        <article *ngFor="let ar of arcos; index as i" class="flow-card">
+          <div class="flow-fields">
+            <label>
+              <span>Origen</span>
+              <select [(ngModel)]="ar.nodoOrigenId" [name]="'arcoOrigen' + i">
+                <option *ngFor="let n of nodosDisponibles" [ngValue]="n.nodoId">{{ n.label }}</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Destino</span>
+              <select [(ngModel)]="ar.nodoDestinoId" [name]="'arcoDestino' + i">
+                <option *ngFor="let n of nodosDisponibles" [ngValue]="n.nodoId">{{ n.label }}</option>
+              </select>
+            </label>
+
+            <div class="hint">
+              {{ nodosLabelMap.get(ar.nodoOrigenId) || ('Nodo ' + ar.nodoOrigenId) }}
+              →
+              {{ nodosLabelMap.get(ar.nodoDestinoId) || ('Nodo ' + ar.nodoDestinoId) }}
+            </div>
+          </div>
+
+          <div class="flow-actions">
+            <button type="button" class="btn-delete" (click)="eliminarArco(i)">Eliminar</button>
+          </div>
+        </article>
+      </section>
 
       <button type="submit" [disabled]="guardando">
-        {{ guardando ? 'Guardando...' : (esEdicion ? '💾 Guardar Cambios' : '🚀 Crear Proceso') }}
+        {{ guardando ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Crear proceso completo') }}
       </button>
-
     </form>
   </div>
 </div>

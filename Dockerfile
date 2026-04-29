@@ -12,8 +12,8 @@ RUN npm ci
 # Copiar el resto del proyecto
 COPY . .
 
-# Compilar Angular en modo producción
-RUN npm run build -- --configuration production
+# Compilar Angular en modo producción para servir la app bajo /front/
+RUN npm run build -- --configuration production --base-href /front/ --deploy-url /front/
 
 # =========================
 # Etapa 2: runtime con Nginx
@@ -25,7 +25,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copiar build generado de Angular
 # Ajusta la ruta según el nombre real del proyecto
-COPY --from=build /app/dist/angular_web/browser /usr/share/nginx/html
+COPY --from=build /app/dist/angular_web/browser /usr/share/nginx/html/front
 
 EXPOSE 80
 

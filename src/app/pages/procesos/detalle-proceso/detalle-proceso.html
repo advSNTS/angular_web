@@ -1,40 +1,33 @@
 <div class="detalle-shell">
-
-  <div *ngIf="cargando" class="estado-mensaje"> Cargando...</div>
+  <div *ngIf="cargando" class="estado-mensaje">Cargando...</div>
 
   <ng-container *ngIf="!cargando && proceso">
-
-    <!-- Encabezado -->
     <div class="encabezado">
       <button class="btn-volver" (click)="volver()">← Volver</button>
       <div class="encabezado-info">
         <p class="eyebrow">Detalle del Proceso</p>
-        <h1>{{ proceso!.nombre }}</h1>
-        <p class="lead">{{ proceso!.descripcion }}</p>
+        <h1>{{ proceso.nombre }}</h1>
+        <p class="lead">{{ proceso.descripcion }}</p>
         <div class="meta">
-          <span class="categoria"> {{ proceso!.categoria }}</span>
-          <span [class]="getClaseEstado(proceso!)">{{ getEstado(proceso!) }}</span>
+          <span class="categoria">{{ proceso.categoria }}</span>
+          <span [class]="getClaseEstado(proceso)">{{ getEstado(proceso) }}</span>
         </div>
       </div>
-      <button class="btn-editar" (click)="irAEditor()"> Editar Proceso</button>
+      <button class="btn-editar" (click)="irAEditor()">Editar Proceso</button>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
       <button [class.activa]="tabActiva === 'flujo'" (click)="tabActiva = 'flujo'">
-         Flujo del Proceso
+        Flujo del Proceso
       </button>
       <button [class.activa]="tabActiva === 'historial'" (click)="tabActiva = 'historial'">
-         Historial de Cambios
+        Historial de Cambios
       </button>
     </div>
 
-    <!-- Tab Flujo -->
     <div *ngIf="tabActiva === 'flujo'" class="tab-contenido">
-
-      <!-- Actividades -->
       <section class="seccion">
-        <h2> Actividades <span class="contador">{{ actividades.length }}</span></h2>
+        <h2>Actividades <span class="contador">{{ actividades.length }}</span></h2>
         <div *ngIf="actividades.length === 0" class="vacio">Sin actividades registradas</div>
         <div class="grid-cards">
           <div *ngFor="let act of actividades" class="card-item">
@@ -46,9 +39,8 @@
         </div>
       </section>
 
-      <!-- Gateways -->
       <section class="seccion">
-        <h2> Gateways <span class="contador">{{ gateways.length }}</span></h2>
+        <h2>Gateways <span class="contador">{{ gateways.length }}</span></h2>
         <div *ngIf="gateways.length === 0" class="vacio">Sin gateways registrados</div>
         <div class="grid-cards">
           <div *ngFor="let gw of gateways" class="card-item">
@@ -60,9 +52,8 @@
         </div>
       </section>
 
-      <!-- Arcos -->
       <section class="seccion">
-        <h2> Arcos de Flujo <span class="contador">{{ arcos.length }}</span></h2>
+        <h2>Arcos de Flujo <span class="contador">{{ arcos.length }}</span></h2>
         <div *ngIf="arcos.length === 0" class="vacio">Sin arcos registrados</div>
         <div class="lista-arcos">
           <div *ngFor="let arco of arcos" class="arco-item">
@@ -72,14 +63,13 @@
           </div>
         </div>
       </section>
-
     </div>
 
-    <!-- Tab Historial -->
     <div *ngIf="tabActiva === 'historial'" class="tab-contenido">
       <section class="seccion">
-        <h2> Historial de Cambios</h2>
+        <h2>Historial de Cambios</h2>
         <div *ngIf="historial.length === 0" class="vacio">Sin historial registrado</div>
+
         <div class="lista-historial">
           <div *ngFor="let h of historial" class="historial-item">
             <div class="historial-header">
@@ -88,6 +78,11 @@
               </span>
               <span class="fecha">{{ h.fechaCambio | date:'dd/MM/yyyy HH:mm' }}</span>
             </div>
+
+            <div *ngIf="h.campo" class="campo-cambiado">
+              Campo: <strong>{{ h.campo }}</strong>
+            </div>
+
             <div class="historial-valores">
               <div *ngIf="h.valorAnterior">
                 <small>Antes:</small>
@@ -102,6 +97,5 @@
         </div>
       </section>
     </div>
-
   </ng-container>
 </div>

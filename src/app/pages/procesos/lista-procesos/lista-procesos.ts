@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../../services/auth.service';
 import { ProcesoService } from '../../../services/proceso.service'; 
 import { ProcesoResponse } from '../../../models/proceso';      
 import { Router } from '@angular/router';
@@ -25,6 +26,7 @@ export class ListaProcesosComponent implements OnInit {
 
   constructor(
     private procesoService: ProcesoService,
+    private authService: AuthService,
     private router: Router
   ) {}
 
@@ -71,6 +73,11 @@ export class ListaProcesosComponent implements OnInit {
 
   seleccionar(proceso: ProcesoResponse): void {
     this.router.navigate(['/procesos', proceso.id, 'detalle']);
+  }
+
+  cerrarSesion(): void {
+    this.authService.cerrarSesion();
+    void this.router.navigateByUrl('/');
   }
 
   get categorias(): string[] {

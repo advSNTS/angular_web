@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build --base-href /front/ --deploy-url /front/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:angular_web": "node dist/angular_web/server/server.mjs"

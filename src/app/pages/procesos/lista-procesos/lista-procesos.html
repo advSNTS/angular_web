@@ -1,20 +1,22 @@
-<div class="contenedor">
-
 <div class="procesos-shell">
-
   <div class="encabezado">
-    <p class="eyebrow">Sistema de Gestión</p>
-    <h1> Seleccionar Proceso</h1>
-    <p>Elige un proceso para ver su detalle o editarlo</p>
-  </div>
+    <div>
+      <p class="eyebrow">Sistema de Gestión</p>
+      <h1>Seleccionar Proceso</h1>
+      <p>Elige un proceso para ver su detalle o editarlo</p>
+    </div>
 
+    <button type="button" class="btn-cerrar-sesion" (click)="cerrarSesion()">
+      Cerrar sesión
+    </button>
+  </div>
 
   <!-- Filtros -->
   <div class="filtros">
     <input
       [(ngModel)]="busqueda"
       (input)="filtrar()"
-      placeholder=" Buscar por nombre..."
+      placeholder="Buscar por nombre..."
       class="input-busqueda">
 
     <select [(ngModel)]="filtroCategoria" (change)="filtrar()" class="select-categoria">
@@ -24,12 +26,11 @@
   </div>
 
   <!-- Estado de carga -->
-  <div *ngIf="cargando" class="estado-mensaje"> Cargando procesos...</div>
-  <div *ngIf="error" class="estado-error"> {{ error }}</div>
+  <div *ngIf="cargando" class="estado-mensaje">Cargando procesos...</div>
+  <div *ngIf="error" class="estado-error">{{ error }}</div>
 
   <!-- Lista de procesos -->
   <div *ngIf="!cargando && !error" class="lista">
-
     <div *ngIf="procesosFiltrados.length === 0" class="estado-mensaje">
       No se encontraron procesos.
     </div>
@@ -48,18 +49,17 @@
       <p class="descripcion">{{ proceso.descripcion }}</p>
 
       <div class="tarjeta-footer">
-        <span class="categoria"> {{ proceso.categoria }}</span>
+        <span class="categoria">{{ proceso.categoria }}</span>
       </div>
     </div>
   </div>
 
   <!-- Detalle del proceso seleccionado -->
   <div *ngIf="procesoSeleccionado" class="detalle">
-    <h2> Proceso seleccionado</h2>
+    <h2>Proceso seleccionado</h2>
     <p><strong>Nombre:</strong> {{ procesoSeleccionado.nombre }}</p>
     <p><strong>Categoría:</strong> {{ procesoSeleccionado.categoria }}</p>
     <p><strong>Descripción:</strong> {{ procesoSeleccionado.descripcion }}</p>
     <p><strong>Estado:</strong> {{ getEstado(procesoSeleccionado) }}</p>
   </div>
-
 </div>

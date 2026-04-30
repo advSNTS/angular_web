@@ -27,7 +27,7 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.authService.estaAutenticado()) {
-      void this.router.navigateByUrl('/dashboard');
+      void this.router.navigateByUrl('/procesos');
     }
   }
 
@@ -49,7 +49,7 @@ export class LoginComponent implements OnInit {
       })
       .pipe(finalize(() => (this.cargando = false)))
       .subscribe({
-        next: () => void this.router.navigateByUrl('/dashboard'),
+        next: () => void this.router.navigateByUrl('/procesos'),
         error: (err: Error) => {
           this.error = err.message || 'Credenciales inválidas.';
         }

@@ -60,7 +60,9 @@ export class ProcesoService {
   }
 
   obtenerHistorial(id: number): Observable<HistorialProcesoApi[]> {
-    return this.http.get<HistorialProcesoApi[]>(`${this.baseUrl}/${id}/historial`);
+    return this.http.get<HistorialProcesoApi[]>(`${this.baseUrl}/${id}/historial`, {
+      params: this.nitParams()
+    });
   }
 
   compartir(procesoId: number, dto: ProcesoCompartidoRequest): Observable<ProcesoCompartidoResponse> {

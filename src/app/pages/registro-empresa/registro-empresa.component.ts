@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { EmpresaService } from '../../services/empresa.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-registro-empresa',
@@ -17,6 +18,7 @@ export class RegistroEmpresaComponent {
   private readonly fb = inject(FormBuilder);
   private readonly empresaService = inject(EmpresaService);
   private readonly router = inject(Router);
+  private readonly notify = inject(NotificationService);
 
   cargando = false;
   error = '';
@@ -24,7 +26,8 @@ export class RegistroEmpresaComponent {
   readonly form = this.fb.nonNullable.group({
     nit: ['', [Validators.required, Validators.minLength(3)]],
     nombre: ['', Validators.required],
-    correo: ['', [Validators.required, Validators.email]]
+    correo: ['', [Validators.required, Validators.email]],
+    contrasenaAdministrador: ['']
   });
 
   enviar(): void {
@@ -35,15 +38,22 @@ export class RegistroEmpresaComponent {
     }
     const v = this.form.getRawValue();
     this.cargando = true;
+    const pwd = v.contrasenaAdministrador?.trim();
     this.empresaService
       .registrar({
         nit: v.nit.trim(),
         nombre: v.nombre.trim(),
-        correo: v.correo.trim()
+        correo: v.correo.trim(),
+        ...(pwd ? { contrasenaAdministrador: pwd } : {})
       })
       .pipe(finalize(() => (this.cargando = false)))
       .subscribe({
-        next: () => void this.router.navigateByUrl('/login'),
+        next: (res) => {
+          if (res.mensajeRegistro) {
+            this.notify.exito(res.mensajeRegistro);
+          }
+          void this.router.navigateByUrl('/login');
+        },
         error: (err: HttpErrorResponse | Error) => {
           if (err instanceof HttpErrorResponse) {
             const e = err.error;

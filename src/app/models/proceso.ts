@@ -82,6 +82,10 @@ export interface HistorialProcesoApi {
   fechaCambio: string;
   valorAnterior: string | Record<string, unknown> | null;
   valorNuevo: string | Record<string, unknown> | null;
+  idProceso?: number;
+  nombreProceso?: string | null;
+  idEmpleado?: number | null;
+  nombreEmpleado?: string | null;
   empleado?: { id: number; nombre?: string } | null;
 }
 
@@ -129,12 +133,15 @@ export interface EmpresaRequest {
   nit: string;
   nombre: string;
   correo: string;
+  /** Si se omite, el backend usa la contraseña inicial por defecto del entorno (ver guía). */
+  contrasenaAdministrador?: string;
 }
 
 export interface EmpresaResponse {
   nit: string;
   nombre: string;
   correo: string;
+  mensajeRegistro?: string;
 }
 
 export type PermisoRol = 'VER' | 'EDITAR' | 'ADMINISTRAR';

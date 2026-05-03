@@ -1,0 +1,41 @@
+<div class="registro-shell">
+  <div class="registro-card">
+    <h1>Registrar Empresa</h1>
+    <p>Crea tu cuenta empresarial y un usuario administrador</p>
+
+    <div *ngIf="error" class="error-msg">{{ error }}</div>
+
+    <section>
+      <h2>Datos de la empresa</h2>
+      <label>NIT *</label>
+      <input [(ngModel)]="empresa.nit" placeholder="900123456" />
+      <label>Nombre de la empresa *</label>
+      <input [(ngModel)]="empresa.nombre" placeholder="Mi Empresa S.A.S." />
+      <label>Correo de contacto *</label>
+      <input [(ngModel)]="empresa.correo" placeholder="contacto@empresa.com" />
+    </section>
+
+    <section>
+      <h2>Usuario administrador</h2>
+      <label>Nombre completo *</label>
+      <input [(ngModel)]="empleado.nombre" placeholder="Juan Pérez" />
+      <label>Tipo de documento</label>
+      <select [(ngModel)]="empleado.tipoDocumento">
+        <option value="CC">Cédula de Ciudadanía</option>
+        <option value="CE">Cédula de Extranjería</option>
+      </select>
+      <label>Número de documento *</label>
+      <input [(ngModel)]="empleado.numeroDocumento" placeholder="1234567890" />
+      <label>Correo (para iniciar sesión) *</label>
+      <input [(ngModel)]="empleado.credencial.correo" placeholder="admin@empresa.com" />
+      <label>Contraseña *</label>
+      <input type="password" [(ngModel)]="empleado.credencial.contrasena" placeholder="Mínimo 6 caracteres" />
+    </section>
+
+    <button (click)="registrar()" [disabled]="guardando">
+      {{ guardando ? 'Registrando...' : 'Crear cuenta' }}
+    </button>
+
+    <p class="link-login">¿Ya tienes cuenta? <a (click)="irLogin()">Inicia sesión</a></p>
+  </div>
+</div>

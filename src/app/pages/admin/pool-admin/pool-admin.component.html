@@ -1,0 +1,23 @@
+<div class="page-shell">
+  <p class="eyebrow">Infraestructura</p>
+  <h1>Pools de la empresa</h1>
+  <p class="lead">
+    Cada empresa dispone de al menos un pool para sus procesos. La API actual expone solo lectura del pool; la edición de
+    nombre/descripción quedaría pendiente si el backend añade <code>PUT /api/pools/:id</code>.
+  </p>
+
+  @if (cargando) {
+    <p class="muted">Cargando...</p>
+  } @else if (!pools.length) {
+    <p class="muted">No hay pools visibles para el NIT de sesión.</p>
+  } @else {
+    @for (p of pools; track p.id) {
+      <section class="panel">
+        <h2>Pool #{{ p.id }}</h2>
+        <p><strong>Nombre:</strong> {{ p.nombre || '—' }}</p>
+        <p><strong>Descripción:</strong> {{ p.descripcion || '—' }}</p>
+        <p><strong>NIT:</strong> {{ p.nitEmpresa || auth.getNitEmpresa() }}</p>
+      </section>
+    }
+  }
+</div>

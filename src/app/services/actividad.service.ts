@@ -1,36 +1,35 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { ActividadResponse, ActividadRequest } from '../models/proceso';
-import { environment } from '../../environments/environment';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { buildApiPath } from '../core/api-url';
+import { ActividadRequest, ActividadResponse } from '../models/proceso';
 
 @Injectable({ providedIn: 'root' })
 export class ActividadService {
-  private apiUrl = `${environment.apiUrl}/actividades`;
-
-  // MOCK — reemplaza of(...) por this.http.get(...) cuando el backend esté listo
-  private mock: ActividadResponse[] = [
-    { id: 1, nodoId: 1, nombreNodo: 'Inicio', procesoId: 1, nombreProceso: 'Proceso de Ventas', descripcion: 'Recepción del cliente' },
-    { id: 2, nodoId: 2, nombreNodo: 'Evaluación', procesoId: 1, nombreProceso: 'Proceso de Ventas', descripcion: 'Evaluar necesidades' },
-    { id: 3, nodoId: 3, nombreNodo: 'Cierre', procesoId: 1, nombreProceso: 'Proceso de Ventas', descripcion: 'Firma del contrato' },
-  ];
-
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = buildApiPath('/actividades');
 
   obtenerPorProceso(procesoId: number): Observable<ActividadResponse[]> {
-    return of(this.mock.filter(a => a.procesoId === procesoId));
-    // BACKEND: return this.http.get<ActividadResponse[]>(`${this.apiUrl}/proceso/${procesoId}`);
+    return this.http.get<ActividadResponse[]>(`${this.baseUrl}/proceso/${procesoId}`);
   }
 
   crear(dto: ActividadRequest): Observable<ActividadResponse> {
-    return this.http.post<ActividadResponse>(this.apiUrl, dto);
+    return this.http.post<ActividadResponse>(this.baseUrl, dto);
   }
 
-  actualizar(id: number, dto: ActividadRequest): Observable<ActividadResponse> {
-    return this.http.put<ActividadResponse>(`${this.apiUrl}/${id}`, dto);
+  actualizar(id: number, dto: ActividadRequest, idEmpleado?: number): Observable<ActividadResponse> {
+    let params = new HttpParams();
+    if (idEmpleado != null) {
+      params = params.set('idEmpleado', String(idEmpleado));
+    }
+    return this.http.put<ActividadResponse>(`${this.baseUrl}/${id}`, dto, { params });
   }
 
-  eliminar(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  eliminar(id: number, idEmpleado?: number): Observable<void> {
+    let params = new HttpParams();
+    if (idEmpleado != null) {
+      params = params.set('idEmpleado', String(idEmpleado));
+    }
+    return this.http.delete<void>(`${this.baseUrl}/${id}`, { params });
   }
 }

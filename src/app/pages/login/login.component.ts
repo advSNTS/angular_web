@@ -1,14 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
@@ -27,7 +27,7 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.authService.estaAutenticado()) {
-      void this.router.navigateByUrl('/procesos');
+      void this.router.navigateByUrl('/');
     }
   }
 
@@ -49,7 +49,7 @@ export class LoginComponent implements OnInit {
       })
       .pipe(finalize(() => (this.cargando = false)))
       .subscribe({
-        next: () => void this.router.navigateByUrl('/procesos'),
+        next: () => void this.router.navigateByUrl('/'),
         error: (err: Error) => {
           this.error = err.message || 'Credenciales inválidas.';
         }

@@ -1,11 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService } from '../../../services/auth.service';
-import { ProcesoService } from '../../../services/proceso.service'; 
-import { ProcesoResponse } from '../../../models/proceso';      
 import { Router } from '@angular/router';
-
+import { claseEstado, estadoDesdeResponse, labelEstado } from '../../../core/proceso-estado.util';
+import { puedeEditarProcesos, esAdministradorEmpresa } from '../../../core/roles.util';
+import { AuthService } from '../../../services/auth.service';
+import { ProcesoService } from '../../../services/proceso.service';
+import { NotificationService } from '../../../services/notification.service';
+import { EstadoProceso, ProcesoResponse } from '../../../models/proceso';
 
 @Component({
   selector: 'app-lista-procesos',
@@ -15,6 +17,10 @@ import { Router } from '@angular/router';
   styleUrls: ['./lista-procesos.css']
 })
 export class ListaProcesosComponent implements OnInit {
+  private readonly procesoService = inject(ProcesoService);
+  readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly notify = inject(NotificationService);
 
   procesos: ProcesoResponse[] = [];
   procesosFiltrados: ProcesoResponse[] = [];
@@ -22,75 +28,83 @@ export class ListaProcesosComponent implements OnInit {
   error = '';
   busqueda = '';
   filtroCategoria = '';
-  procesoSeleccionado: ProcesoResponse | null = null;
-
-  constructor(
-    private procesoService: ProcesoService,
-    private authService: AuthService,
-    private router: Router
-  ) {}
-
+  filtroEstado: '' | EstadoProceso = '';
 
   ngOnInit(): void {
-    // DATOS MOCK (para probar sin backend)
-    this.procesos = [
-      { id: 1, nombre: 'Proceso de Ventas', descripcion: 'Gestión del ciclo de ventas', categoria: 'Comercial', borrador: false, activo: true },
-      { id: 2, nombre: 'Proceso de RRHH', descripcion: 'Gestión de recursos humanos', categoria: 'Administrativo', borrador: true, activo: true },
-      { id: 3, nombre: 'Proceso Contable', descripcion: 'Registro y control contable', categoria: 'Finanzas', borrador: false, activo: false }
-    ];
+    this.cargarProcesos();
+  }
 
-    this.procesosFiltrados = this.procesos;
-    this.cargando = false;
+  get puedeEditar(): boolean {
+    return puedeEditarProcesos(this.authService.getSesionActual()?.rolesSistema);
+  }
 
-    // this.cargarProcesos();
+  get esAdmin(): boolean {
+    return esAdministradorEmpresa(this.authService.getSesionActual()?.rolesSistema);
   }
 
   cargarProcesos(): void {
     this.cargando = true;
+    this.error = '';
     this.procesoService.obtenerTodos().subscribe({
       next: (data) => {
         this.procesos = data;
-        this.procesosFiltrados = data;
+        this.filtrar();
         this.cargando = false;
       },
       error: () => {
-        this.error = 'Error al cargar los procesos. Verifica que el backend esté corriendo.';
+        this.error = 'Error al cargar los procesos. Verifica el backend o el inicio de sesión.';
         this.cargando = false;
       }
     });
   }
 
   filtrar(): void {
-    this.procesosFiltrados = this.procesos.filter(p => {
-      const coincideNombre = p.nombre.toLowerCase()
-        .includes(this.busqueda.toLowerCase());
-      const coincideCategoria = this.filtroCategoria
-        ? p.categoria === this.filtroCategoria
-        : true;
-      return coincideNombre && coincideCategoria;
+    this.procesosFiltrados = this.procesos.filter((p) => {
+      const nombreOk = p.nombre.toLowerCase().includes(this.busqueda.toLowerCase());
+      const catOk = this.filtroCategoria ? p.categoria === this.filtroCategoria : true;
+      const est = estadoDesdeResponse(p);
+      const estadoOk = this.filtroEstado ? est === this.filtroEstado : true;
+      return nombreOk && catOk && estadoOk;
     });
   }
 
-  seleccionar(proceso: ProcesoResponse): void {
-    this.router.navigate(['/procesos', proceso.id, 'detalle']);
+  ver(proceso: ProcesoResponse, ev: Event): void {
+    ev.stopPropagation();
+    void this.router.navigate(['/procesos', proceso.id, 'detalle']);
   }
 
-  cerrarSesion(): void {
-    this.authService.cerrarSesion();
-    void this.router.navigateByUrl('/');
+  editar(proceso: ProcesoResponse, ev: Event): void {
+    ev.stopPropagation();
+    void this.router.navigate(['/procesos', proceso.id, 'editar']);
+  }
+
+  nuevo(): void {
+    void this.router.navigate(['/procesos/nuevo']);
+  }
+
+  eliminar(proceso: ProcesoResponse, ev: Event): void {
+    ev.stopPropagation();
+    if (!this.esAdmin) return;
+    if (!confirm(`¿Marcar como inactivo el proceso "${proceso.nombre}"?`)) return;
+    const idEmp = this.authService.getSesionActual()?.id;
+    this.procesoService.eliminar(proceso.id, idEmp).subscribe({
+      next: () => {
+        this.notify.exito('Proceso desactivado.');
+        this.cargarProcesos();
+      },
+      error: () => this.notify.error('No se pudo eliminar el proceso.')
+    });
   }
 
   get categorias(): string[] {
-    return [...new Set(this.procesos.map(p => p.categoria))];
+    return [...new Set(this.procesos.map((p) => p.categoria).filter(Boolean))];
   }
 
   getEstado(proceso: ProcesoResponse): string {
-    if (!proceso.activo) return 'Inactivo';
-    return proceso.borrador ? 'Borrador' : 'Publicado';
+    return labelEstado(proceso);
   }
 
   getClaseEstado(proceso: ProcesoResponse): string {
-    if (!proceso.activo) return 'estado-inactivo';
-    return proceso.borrador ? 'estado-borrador' : 'estado-publicado';
+    return claseEstado(proceso);
   }
 }

@@ -25,6 +25,7 @@
   <section class="card">
     <h2>Ingresar</h2>
     <p class="subtle">El formulario consulta la API de autenticación.</p>
+    <p class="subtle"><a routerLink="/registro" class="link-reg">Registrar nueva empresa</a></p>
 
     <form [formGroup]="loginForm" (ngSubmit)="ingresar()" novalidate>
       <label>

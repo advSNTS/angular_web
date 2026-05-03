@@ -51,6 +51,16 @@ h1 {
   line-height: 1.6;
 }
 
+.link-reg {
+  color: #93c5fd;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link-reg:hover {
+  text-decoration: underline;
+}
+
 .notes {
   margin-top: 2rem;
   display: grid;

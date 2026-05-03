@@ -1,0 +1,8 @@
+@import '../../roles-proceso/roles-proceso-page.component.css';
+
+code {
+  font-size: 0.85em;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.35rem;
+  background: rgba(148, 163, 184, 0.15);
+}

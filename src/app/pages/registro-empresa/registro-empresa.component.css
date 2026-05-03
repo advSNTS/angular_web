@@ -1,0 +1,11 @@
+@import '../login/login.component.css';
+
+.link-login {
+  color: #93c5fd;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.link-login:hover {
+  text-decoration: underline;
+}

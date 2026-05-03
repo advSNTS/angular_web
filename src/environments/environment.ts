@@ -1,4 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: 'api'
+  /** En desarrollo las peticiones van a `/api/*` (proxy → backend). */
+  apiUrl: '/api'
 };

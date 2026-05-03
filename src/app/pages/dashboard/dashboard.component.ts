@@ -18,7 +18,7 @@ export class DashboardComponent {
 
   cerrarSesion(): void {
     this.authService.cerrarSesion();
-    void this.router.navigateByUrl('/');
+    void this.router.navigateByUrl('/login');
   }
 }
 

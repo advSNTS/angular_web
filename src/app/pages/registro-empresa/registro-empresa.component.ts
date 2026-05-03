@@ -21,10 +21,13 @@ export class RegistroEmpresaComponent {
   cargando = false;
   error = '';
 
+  infoClave = '';
+
   readonly form = this.fb.nonNullable.group({
     nit: ['', [Validators.required, Validators.minLength(3)]],
     nombre: ['', Validators.required],
-    correo: ['', [Validators.required, Validators.email]]
+    correo: ['', [Validators.required, Validators.email]],
+    contrasena: ['']
   });
 
   enviar(): void {
@@ -35,24 +38,38 @@ export class RegistroEmpresaComponent {
     }
     const v = this.form.getRawValue();
     this.cargando = true;
+    const payload = {
+      nit: v.nit.trim(),
+      nombre: v.nombre.trim(),
+      correo: v.correo.trim(),
+      ...(v.contrasena.trim() ? { contrasena: v.contrasena.trim() } : {})
+    };
+
     this.empresaService
-      .registrar({
-        nit: v.nit.trim(),
-        nombre: v.nombre.trim(),
-        correo: v.correo.trim()
-      })
+      .registrar(payload)
       .pipe(finalize(() => (this.cargando = false)))
       .subscribe({
-        next: () => void this.router.navigateByUrl('/login'),
+        next: (res) => {
+          if (res.contrasenaInicialAsignada) {
+            this.infoClave = `Contraseña del administrador (guárdela): ${res.contrasenaInicialAsignada}`;
+            setTimeout(() => void this.router.navigateByUrl('/login'), 4000);
+          } else {
+            void this.router.navigateByUrl('/login');
+          }
+        },
         error: (err: HttpErrorResponse | Error) => {
           if (err instanceof HttpErrorResponse) {
-            const e = err.error;
-            this.error =
-              (typeof e === 'object' && e && 'message' in e && typeof e.message === 'string'
-                ? e.message
-                : null) ||
-              err.message ||
-              'No se pudo registrar la empresa.';
+            if (typeof err.error === 'string' && err.error.trim()) {
+              this.error = err.error;
+            } else {
+              const e = err.error;
+              this.error =
+                (typeof e === 'object' && e && 'message' in e && typeof e.message === 'string'
+                  ? e.message
+                  : null) ||
+                err.message ||
+                'No se pudo registrar la empresa.';
+            }
           } else {
             this.error = err.message || 'No se pudo registrar la empresa.';
           }

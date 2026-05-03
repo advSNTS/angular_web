@@ -129,12 +129,15 @@ export interface EmpresaRequest {
   nit: string;
   nombre: string;
   correo: string;
+  /** Si se omite, el backend usa contraseña por defecto y la devuelve en {@link EmpresaResponse.contrasenaInicialAsignada}. */
+  contrasena?: string;
 }
 
 export interface EmpresaResponse {
   nit: string;
   nombre: string;
   correo: string;
+  contrasenaInicialAsignada?: string | null;
 }
 
 export type PermisoRol = 'VER' | 'EDITAR' | 'ADMINISTRAR';

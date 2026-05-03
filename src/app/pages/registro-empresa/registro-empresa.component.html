@@ -21,6 +21,13 @@
         <span>Correo corporativo *</span>
         <input type="email" formControlName="correo" placeholder="contacto@empresa.com" />
       </label>
+      <label>
+        <span>Contraseña del administrador (opcional)</span>
+        <input type="password" formControlName="contrasena" placeholder="Si la deja vacía, se usará una por defecto (se mostrará una vez)" autocomplete="new-password" />
+      </label>
+      @if (infoClave) {
+        <p class="info-clave">{{ infoClave }}</p>
+      }
       @if (error) {
         <p class="error">{{ error }}</p>
       }

@@ -1,0 +1,68 @@
+<div class="page-shell">
+  <p class="eyebrow">Catálogo</p>
+  <h1>Roles funcionales de proceso</h1>
+  <p class="lead">
+    Los roles definen permisos por pool (VER, EDITAR, ADMINISTRAR). Asígnalos a usuarios desde <strong>Usuarios</strong>.
+  </p>
+
+  @if (cargando) {
+    <p class="muted">Cargando...</p>
+  } @else {
+    <section class="panel">
+      <h2>{{ editandoId != null ? 'Editar rol' : 'Nuevo rol' }}</h2>
+      <form [formGroup]="form" (ngSubmit)="guardar()" class="form-grid">
+        <label>
+          <span>Nombre *</span>
+          <input formControlName="nombre" />
+        </label>
+        <label>
+          <span>Descripción</span>
+          <input formControlName="descripcion" />
+        </label>
+        <label>
+          <span>Permiso en pool</span>
+          <select formControlName="permiso">
+            <option value="VER">Ver</option>
+            <option value="EDITAR">Editar</option>
+            <option value="ADMINISTRAR">Administrar</option>
+          </select>
+        </label>
+        <div class="actions">
+          <button type="submit" [disabled]="guardando">{{ guardando ? 'Guardando...' : 'Guardar' }}</button>
+          @if (editandoId != null) {
+            <button type="button" class="btn-ghost" (click)="nuevo()">Cancelar edición</button>
+          }
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Roles registrados</h2>
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Permiso</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of roles; track r.id) {
+              <tr>
+                <td>{{ r.nombre }}</td>
+                <td>{{ r.descripcion || '—' }}</td>
+                <td>{{ r.permiso }}</td>
+                <td class="cell-actions">
+                  <button type="button" class="btn-link" (click)="editar(r)">Editar</button>
+                  <button type="button" class="btn-danger" (click)="eliminar(r)">Eliminar</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

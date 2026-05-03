@@ -3,7 +3,7 @@
 
   <ng-container *ngIf="!cargando && proceso">
     <div class="encabezado">
-      <button class="btn-volver" (click)="volver()">← Volver</button>
+      <button class="btn-volver" type="button" (click)="volver()">← Volver</button>
       <div class="encabezado-info">
         <p class="eyebrow">Detalle del Proceso</p>
         <h1>{{ proceso.nombre }}</h1>
@@ -13,19 +13,27 @@
           <span [class]="getClaseEstado(proceso)">{{ getEstado(proceso) }}</span>
         </div>
       </div>
-      <button class="btn-editar" (click)="irAEditor()">Editar Proceso</button>
+      <button *ngIf="puedeEditar" type="button" class="btn-editar" (click)="irAEditor()">Editar Proceso</button>
     </div>
 
     <div class="tabs">
-      <button [class.activa]="tabActiva === 'flujo'" (click)="tabActiva = 'flujo'">
-        Flujo del Proceso
+      <button type="button" [class.activa]="tabActiva === 'flujo'" (click)="tabActiva = 'flujo'">Flujo</button>
+      <button type="button" [class.activa]="tabActiva === 'diagrama'" (click)="tabActiva = 'diagrama'">Diagrama</button>
+      <button type="button" [class.activa]="tabActiva === 'historial'" (click)="tabActiva = 'historial'">Historial</button>
+      <button *ngIf="puedeCompartir" type="button" [class.activa]="tabActiva === 'compartir'" (click)="tabActiva = 'compartir'">
+        Compartir
       </button>
-      <button [class.activa]="tabActiva === 'historial'" (click)="tabActiva = 'historial'">
-        Historial de Cambios
-      </button>
+      <button type="button" [class.activa]="tabActiva === 'mensajes'" (click)="tabActiva = 'mensajes'">Mensajes</button>
     </div>
 
     <div *ngIf="tabActiva === 'flujo'" class="tab-contenido">
+      <section class="seccion" *ngIf="lanes.length">
+        <h2>Carriles (lanes)</h2>
+        <div class="lane-strip">
+          <span *ngFor="let l of lanes" class="lane-pill">{{ l.nombre }}</span>
+        </div>
+      </section>
+
       <section class="seccion">
         <h2>Actividades <span class="contador">{{ actividades.length }}</span></h2>
         <div *ngIf="actividades.length === 0" class="vacio">Sin actividades registradas</div>
@@ -33,8 +41,10 @@
           <div *ngFor="let act of actividades" class="card-item">
             <div class="card-item-header">
               <span class="nodo-badge">{{ act.nombreNodo }}</span>
+              <span class="lane-tag">{{ estadoActividad(act) }}</span>
             </div>
             <p>{{ act.descripcion }}</p>
+            <p *ngIf="act.tipoActividad" class="muted-small">{{ act.tipoActividad }}</p>
           </div>
         </div>
       </section>
@@ -43,7 +53,7 @@
         <h2>Gateways <span class="contador">{{ gateways.length }}</span></h2>
         <div *ngIf="gateways.length === 0" class="vacio">Sin gateways registrados</div>
         <div class="grid-cards">
-          <div *ngFor="let gw of gateways" class="card-item">
+          <div *ngFor="let gw of gateways" class="card-item gw-shape">
             <div class="card-item-header">
               <span class="nodo-badge">{{ gw.nombreNodo }}</span>
               <span [class]="getBadgeGateway(gw.tipoGateway)">{{ gw.tipoGateway }}</span>
@@ -53,7 +63,7 @@
       </section>
 
       <section class="seccion">
-        <h2>Arcos de Flujo <span class="contador">{{ arcos.length }}</span></h2>
+        <h2>Arcos <span class="contador">{{ arcos.length }}</span></h2>
         <div *ngIf="arcos.length === 0" class="vacio">Sin arcos registrados</div>
         <div class="lista-arcos">
           <div *ngFor="let arco of arcos" class="arco-item">
@@ -65,24 +75,32 @@
       </section>
     </div>
 
+    <div *ngIf="tabActiva === 'diagrama'" class="tab-contenido">
+      <section class="seccion">
+        <h2>Vista simplificada del flujo</h2>
+        <p class="muted-p">Secuencia según arcos (lectura izquierda → derecha). Los carriles se indican en fichas de actividad.</p>
+        <div class="diagram-row">
+          <ng-container *ngFor="let nid of ordenDiagrama(); let last = last">
+            <div class="diagram-node" [class.gw]="tipoNodoDiagrama(nid) === 'gw'">
+              {{ labelNodoDiagrama(nid) }}
+            </div>
+            <span *ngIf="!last" class="diagram-arrow">→</span>
+          </ng-container>
+        </div>
+      </section>
+    </div>
+
     <div *ngIf="tabActiva === 'historial'" class="tab-contenido">
       <section class="seccion">
-        <h2>Historial de Cambios</h2>
+        <h2>Historial de cambios</h2>
         <div *ngIf="historial.length === 0" class="vacio">Sin historial registrado</div>
 
         <div class="lista-historial">
           <div *ngFor="let h of historial" class="historial-item">
             <div class="historial-header">
-              <span [class]="h.tipoAccion === 'EDICION' ? 'accion-edicion' : 'accion-eliminacion'">
-                {{ h.tipoAccion }}
-              </span>
-              <span class="fecha">{{ h.fechaCambio | date:'dd/MM/yyyy HH:mm' }}</span>
+              <span class="accion-edicion">{{ h.tipoAccion }}</span>
+              <span class="fecha">{{ fechaHistorial(h) }}</span>
             </div>
-
-            <div *ngIf="h.campo" class="campo-cambiado">
-              Campo: <strong>{{ h.campo }}</strong>
-            </div>
-
             <div class="historial-valores">
               <div *ngIf="h.valorAnterior">
                 <small>Antes:</small>
@@ -95,6 +113,93 @@
             </div>
           </div>
         </div>
+      </section>
+    </div>
+
+    <div *ngIf="tabActiva === 'compartir' && puedeCompartir" class="tab-contenido">
+      <section class="seccion">
+        <h2>Compartir con otro pool</h2>
+        <div class="share-form">
+          <label>
+            Pool destino
+            <select [(ngModel)]="sharePoolId">
+              <option [ngValue]="null">— Seleccione —</option>
+              <option *ngFor="let p of poolsDestino" [ngValue]="p.id">
+                {{ p.nombre || 'Pool ' + p.id }} ({{ p.nitEmpresa }})
+              </option>
+            </select>
+          </label>
+          <label>
+            Permiso
+            <select [(ngModel)]="sharePermiso">
+              <option value="LECTURA">Lectura</option>
+              <option value="EDICION">Edición</option>
+            </select>
+          </label>
+          <button type="button" class="btn-editar" [disabled]="compartiendo" (click)="compartir()">Compartir</button>
+        </div>
+
+        <h3>Comparticiones activas</h3>
+        <div *ngIf="!compartidos.length" class="vacio">Ninguna.</div>
+        <ul class="share-list">
+          <li *ngFor="let c of compartidos">Pool {{ c.poolId }} — {{ c.permiso }}</li>
+        </ul>
+      </section>
+    </div>
+
+    <div *ngIf="tabActiva === 'mensajes'" class="tab-contenido">
+      <section class="seccion">
+        <h2>Mensajes throw</h2>
+        <div class="mini-form">
+          <input [(ngModel)]="nuevoThrow.nombreMensaje" placeholder="Nombre del mensaje" />
+          <input [(ngModel)]="nuevoThrow.payloadTemplate" placeholder="Payload (opcional)" />
+          <button type="button" (click)="crearThrow()">Agregar</button>
+        </div>
+        <table class="data-table" *ngIf="throws.length">
+          <tr *ngFor="let t of throws">
+            <td>{{ t.nombreMensaje }}</td>
+            <td>{{ t.payloadTemplate || '—' }}</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="seccion">
+        <h2>Mensajes catch</h2>
+        <div class="mini-form">
+          <input [(ngModel)]="nuevoCatch.nombreMensaje" placeholder="Nombre" />
+          <input [(ngModel)]="nuevoCatch.correlacionExpr" placeholder="Correlación / businessKey" />
+          <label class="chk"><input type="checkbox" [(ngModel)]="nuevoCatch.iniciarNuevaInstancia" /> Nueva instancia</label>
+          <button type="button" (click)="crearCatch()">Agregar</button>
+        </div>
+        <table class="data-table" *ngIf="catches.length">
+          <tr *ngFor="let c of catches">
+            <td>{{ c.nombreMensaje }}</td>
+            <td>{{ c.correlacionExpr || '—' }}</td>
+            <td>{{ c.iniciarNuevaInstancia ? 'Sí' : 'No' }}</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="seccion">
+        <h2>Integración externa</h2>
+        <p class="muted-p">Destinos registrados (mensajes externos globales):</p>
+        <ul>
+          <li *ngFor="let e of externos">{{ e.id }} — {{ e.destinoTipo }} {{ e.configuracion || '' }}</li>
+        </ul>
+        <div class="mini-form">
+          <select [(ngModel)]="nuevaTarea.mensajeExternoId">
+            <option [ngValue]="null">Mensaje externo</option>
+            <option *ngFor="let e of externos" [ngValue]="e.id">{{ e.id }} · {{ e.destinoTipo }}</option>
+          </select>
+          <input [(ngModel)]="nuevaTarea.payloadMapping" placeholder="Mapeo JSON" />
+          <button type="button" (click)="crearTareaIntegracion()">Crear tarea</button>
+        </div>
+        <table class="data-table" *ngIf="tareas.length">
+          <tr *ngFor="let t of tareas">
+            <td>{{ t.mensajeExternoId }}</td>
+            <td>{{ t.payloadMapping || '—' }}</td>
+          </tr>
+        </table>
       </section>
     </div>
   </ng-container>

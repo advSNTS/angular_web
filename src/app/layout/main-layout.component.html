@@ -1,0 +1,30 @@
+<div class="app-frame">
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-title">Procesos</span>
+      <span class="empresa-pill">{{ nombreEmpresa }}</span>
+      <span class="rol-pill">{{ rolLabel }}</span>
+    </div>
+    <nav class="nav">
+      <a routerLink="/procesos" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }">Procesos</a>
+      @if (puedeEditar) {
+        <a routerLink="/roles-proceso" routerLinkActive="activo">Roles de proceso</a>
+      }
+      @if (esAdmin) {
+        <a routerLink="/admin/usuarios" routerLinkActive="activo">Usuarios</a>
+        <a routerLink="/admin/pool" routerLinkActive="activo">Pool</a>
+      }
+    </nav>
+    <button type="button" class="btn-out" (click)="cerrarSesion()">Salir</button>
+  </header>
+
+  @if (toast) {
+    <div class="toast" [class.ok]="toast.tipo === 'ok'" [class.err]="toast.tipo === 'error'">
+      {{ toast.texto }}
+    </div>
+  }
+
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>

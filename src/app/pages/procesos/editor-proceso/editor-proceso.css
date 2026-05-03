@@ -10,8 +10,14 @@
     linear-gradient(135deg, #08111f, #0f172a 45%, #111827);
 }
 
+.hint-nodo {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
 .card {
-  width: 100%; max-width: 560px;
+  width: 100%; max-width: 900px;
   background: rgba(15,23,42,0.86); backdrop-filter: blur(18px);
   border: 1px solid rgba(148,163,184,0.18); border-radius: 1.5rem;
   padding: 2rem; box-shadow: 0 20px 60px rgba(2,6,23,0.35);

@@ -1,0 +1,30 @@
+<main class="auth-shell">
+  <section class="hero">
+    <p class="eyebrow">Registro</p>
+    <h1>Crear empresa</h1>
+    <p class="lead">Registra tu organización para obtener un pool de procesos y un usuario administrador.</p>
+    <p><a routerLink="/login" class="link-login">Volver al inicio de sesión</a></p>
+  </section>
+
+  <section class="card">
+    <h2>Datos de la empresa</h2>
+    <form [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+      <label>
+        <span>NIT *</span>
+        <input formControlName="nit" placeholder="900123456-7" />
+      </label>
+      <label>
+        <span>Razón social *</span>
+        <input formControlName="nombre" placeholder="Mi empresa S.A.S." />
+      </label>
+      <label>
+        <span>Correo corporativo *</span>
+        <input type="email" formControlName="correo" placeholder="contacto@empresa.com" />
+      </label>
+      @if (error) {
+        <p class="error">{{ error }}</p>
+      }
+      <button type="submit" [disabled]="cargando">{{ cargando ? 'Registrando...' : 'Registrar empresa' }}</button>
+    </form>
+  </section>
+</main>

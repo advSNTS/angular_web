@@ -1,35 +1,39 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { ArcoResponse, ArcoRequest } from '../models/proceso';
-import { environment } from '../../environments/environment';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { buildApiPath } from '../core/api-url';
+import { ArcoRequest, ArcoResponse } from '../models/proceso';
+import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class ArcoService {
-  private apiUrl = `${environment.apiUrl}/arcos`;
-
-  private mock: ArcoResponse[] = [
-    { id: 1, idProceso: 1, nombreProceso: 'Proceso de Ventas', nodoOrigenId: 1, nombreNodoOrigen: 'Inicio', nodoDestinoId: 2, nombreNodoDestino: 'Evaluación' },
-    { id: 2, idProceso: 1, nombreProceso: 'Proceso de Ventas', nodoOrigenId: 2, nombreNodoOrigen: 'Evaluación', nodoDestinoId: 4, nombreNodoDestino: 'Decision' },
-    { id: 3, idProceso: 1, nombreProceso: 'Proceso de Ventas', nodoOrigenId: 4, nombreNodoOrigen: 'Decision', nodoDestinoId: 3, nombreNodoDestino: 'Cierre' },
-  ];
-
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
+  private readonly baseUrl = buildApiPath('/arcos');
 
   obtenerPorProceso(procesoId: number): Observable<ArcoResponse[]> {
-    return of(this.mock.filter(a => a.idProceso === procesoId));
-    // BACKEND: return this.http.get<ArcoResponse[]>(`${this.apiUrl}/proceso/${procesoId}`);
+    return this.http.get<ArcoResponse[]>(`${this.baseUrl}/proceso/${procesoId}`, {
+      params: new HttpParams().set('nitEmpresa', this.requireNit())
+    });
   }
 
   crear(dto: ArcoRequest): Observable<ArcoResponse> {
-    return this.http.post<ArcoResponse>(this.apiUrl, dto);
+    const nit = this.requireNit();
+    return this.http.post<ArcoResponse>(this.baseUrl, { ...dto, nitEmpresa: dto.nitEmpresa ?? nit });
   }
 
   actualizar(id: number, dto: ArcoRequest): Observable<ArcoResponse> {
-    return this.http.put<ArcoResponse>(`${this.apiUrl}/${id}`, dto);
+    const nit = this.requireNit();
+    return this.http.put<ArcoResponse>(`${this.baseUrl}/${id}`, { ...dto, nitEmpresa: dto.nitEmpresa ?? nit });
   }
 
   eliminar(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  private requireNit(): string {
+    const nit = this.auth.getNitEmpresa();
+    if (!nit) throw new Error('Sesión sin NIT de empresa.');
+    return nit;
   }
 }

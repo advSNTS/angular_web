@@ -1,0 +1,17 @@
+<main class="verify-shell">
+  <section class="card">
+    <p class="eyebrow">Verificacion de correo</p>
+
+    <h1>
+      {{ cargando ? 'Validando enlace...' : exito ? 'Correo confirmado' : 'No se pudo verificar' }}
+    </h1>
+
+    <p class="message" [class.error]="!cargando && !exito" [class.success]="!cargando && exito">
+      {{ mensaje }}
+    </p>
+
+    @if (!cargando) {
+      <a routerLink="/login" class="button">Ir al inicio de sesion</a>
+    }
+  </section>
+</main>

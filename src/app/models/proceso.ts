@@ -262,3 +262,9 @@ export interface TareaIntegracionRequest {
   mensajeExternoId?: number | null;
   payloadMapping?: string | null;
 }
+
+export interface VerificacionCorreoResponse {
+  verificado: boolean;
+  correo?: string;
+  mensaje?: string;
+}

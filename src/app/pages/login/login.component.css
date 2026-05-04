@@ -164,4 +164,24 @@ code {
     padding: 1.5rem;
   }
 }
+.success {
+  margin: 0;
+  color: #86efac;
+}
+
+.secondary-button {
+  margin-top: 0;
+  background: transparent;
+  border: 1px solid rgba(147, 197, 253, 0.5);
+  color: #bfdbfe;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: rgba(147, 197, 253, 0.12);
+}
+
+.secondary-button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
 

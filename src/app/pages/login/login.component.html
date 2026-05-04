@@ -17,7 +17,7 @@
       </article>
       <article>
         <span>3</span>
-        <p>La vista no cambia cuando se ajuste el contrato del backend.</p>
+        <p>Ahora debes verificar el correo antes de poder iniciar sesión.</p>
       </article>
     </div>
   </section>
@@ -40,6 +40,21 @@
 
       @if (error) {
         <p class="error">{{ error }}</p>
+      }
+
+      @if (avisoVerificacion) {
+        <p class="success">{{ avisoVerificacion }}</p>
+      }
+
+      @if (mostrarReenvioVerificacion) {
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="reenviando"
+          (click)="reenviarCorreoVerificacion()"
+        >
+          {{ reenviando ? 'Reenviando...' : 'Reenviar correo de verificacion' }}
+        </button>
       }
 
       <button type="submit" [disabled]="cargando">

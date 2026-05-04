@@ -1,0 +1,55 @@
+.verify-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: #f4f7fb;
+}
+
+.card {
+  width: min(520px, 100%);
+  border-radius: 24px;
+  padding: 2rem;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+h1 {
+  margin: 0 0 1rem;
+  color: #0f172a;
+}
+
+.message {
+  margin: 0 auto 1.5rem;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.message.success {
+  color: #047857;
+}
+
+.message.error {
+  color: #b91c1c;
+}
+
+.button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.8rem 1.2rem;
+  background: #0f172a;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+}

@@ -182,7 +182,10 @@ export interface EmpleadoCreateRequest {
 export interface RolXEmpleadoResponse {
   id: number;
   empleadoId: number;
+  nombreEmpleado?: string;
   rolId: number;
+  nombreRol?: string;
+  permiso?: PermisoRol;
 }
 
 export interface RolXEmpleadoRequest {

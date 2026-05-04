@@ -2,42 +2,47 @@
   <p class="eyebrow">Administración</p>
   <h1>Usuarios de la empresa</h1>
   <p class="lead">
-    Invita colaboradores con correo y contraseña. El backend asigna rol de sistema <strong>lector</strong> por defecto.
-    Puedes asociar un <strong>rol funcional de proceso</strong> (seguridad por pool) desde la lista.
+    Invita colaboradores con correo y contraseña.
+    Puedes asociar un <strong>rol funcional</strong> desde la lista.
   </p>
 
   @if (cargando) {
     <p class="muted">Cargando...</p>
   } @else {
-    <section class="panel">
-      <h2>Invitar usuario</h2>
-      <form [formGroup]="invitarForm" (ngSubmit)="invitar()" class="grid-form">
-        <label>
-          <span>Nombre</span>
-          <input formControlName="nombre" />
-        </label>
-        <label>
-          <span>Tipo documento</span>
-          <select formControlName="tipoDocumento">
-            <option value="CC">CC</option>
-            <option value="CE">CE</option>
-          </select>
-        </label>
-        <label>
-          <span>Número</span>
-          <input formControlName="numeroDocumento" />
-        </label>
-        <label>
-          <span>Correo (login)</span>
-          <input type="email" formControlName="correo" />
-        </label>
-        <label>
-          <span>Contraseña temporal</span>
-          <input type="password" formControlName="contrasena" />
-        </label>
-        <button type="submit" [disabled]="invitando">{{ invitando ? 'Creando...' : 'Invitar' }}</button>
-      </form>
-    </section>
+
+    @if (esAdmin) {
+      <section class="panel">
+        <h2>Invitar usuario</h2>
+        <form [formGroup]="invitarForm" (ngSubmit)="invitar()" class="grid-form">
+          <label>
+            <span>Nombre</span>
+            <input formControlName="nombre" />
+          </label>
+          <label>
+            <span>Tipo documento</span>
+            <select formControlName="tipoDocumento">
+              <option value="CC">CC</option>
+              <option value="CE">CE</option>
+            </select>
+          </label>
+          <label>
+            <span>Número</span>
+            <input formControlName="numeroDocumento" />
+          </label>
+          <label>
+            <span>Correo (login)</span>
+            <input type="email" formControlName="correo" />
+          </label>
+          <label>
+            <span>Contraseña temporal</span>
+            <input type="password" formControlName="contrasena" />
+          </label>
+          <button type="submit" [disabled]="invitando">
+            {{ invitando ? 'Creando...' : 'Invitar' }}
+          </button>
+        </form>
+      </section>
+    }
 
     <section class="panel">
       <h2>Listado</h2>
@@ -48,7 +53,8 @@
               <th>Nombre</th>
               <th>Documento</th>
               <th>Correo</th>
-              <th>Rol funcional</th>
+              <th>Rol actual</th>
+              @if (esAdmin) { <th>Asignar rol</th> }
             </tr>
           </thead>
           <tbody>
@@ -57,21 +63,26 @@
                 <td>{{ u.nombre }}</td>
                 <td>{{ u.tipoDocumento }} {{ u.numeroDocumento }}</td>
                 <td>{{ u.correo }}</td>
-                <td>
-                  @if (asignacionForms[u.id]; as fg) {
-                    <div class="row-assign" [formGroup]="fg">
-                      <select formControlName="rolId">
-                        <option [ngValue]="null">— Rol —</option>
-                        @for (r of rolesFuncionales; track r.id) {
-                          <option [ngValue]="r.id">{{ r.nombre }}</option>
-                        }
-                      </select>
-                      <button type="button" (click)="asignarRolFuncional(u.id)" [disabled]="asignando[u.id]">
-                        Asignar
-                      </button>
-                    </div>
-                  }
-                </td>
+                <td>{{ rolesActuales[u.id] ?? '...' }}</td>
+                @if (esAdmin) {
+                  <td>
+                    @if (asignacionForms[u.id]; as fg) {
+                      <div class="row-assign" [formGroup]="fg">
+                        <select formControlName="rolId">
+                          <option [ngValue]="null">— Rol —</option>
+                          @for (r of rolesFuncionales; track r.id) {
+                            <option [ngValue]="r.id">{{ r.nombre }} ({{ r.permiso }})</option>
+                          }
+                        </select>
+                        <button type="button"
+                          (click)="asignarRolFuncional(u.id)"
+                          [disabled]="asignando[u.id]">
+                          {{ asignando[u.id] ? 'Asignando...' : 'Asignar' }}
+                        </button>
+                      </div>
+                    }
+                  </td>
+                }
               </tr>
             }
           </tbody>

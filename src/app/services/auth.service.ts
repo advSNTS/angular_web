@@ -53,6 +53,18 @@ export class AuthService {
     return this.getSesionActual()?.nitEmpresa ?? null;
   }
 
+  getRolesSistema(): string[] {
+    return this.getSesionActual()?.rolesSistema ?? [];
+  }
+
+  esAdmin(): boolean {
+    return this.getRolesSistema().includes('ADMIN');
+  }
+
+  esEditor(): boolean {
+    return this.getRolesSistema().some(r => ['ADMIN', 'EDITOR'].includes(r));
+  }
+
   private enrichRoles(session: EmpleadoAuthResponse): EmpleadoAuthResponse {
     if (!session.token) {
       return { ...session, rolesSistema: session.rolesSistema?.length ? session.rolesSistema : ['READER'] };

@@ -27,6 +27,8 @@ export class UsuariosEmpresaComponent implements OnInit {
 
   usuarios: EmpleadoResponse[] = [];
   rolesFuncionales: RolProcesoResponse[] = [];
+  rolesActuales: Record<number, string> = {};  // ← nuevo
+  esAdmin = false;                              // ← nuevo
   cargando = true;
   invitando = false;
   asignando: Record<number, boolean> = {};
@@ -42,6 +44,7 @@ export class UsuariosEmpresaComponent implements OnInit {
   readonly asignacionForms: Record<number, FormGroup> = {};
 
   ngOnInit(): void {
+    this.esAdmin = this.auth.esAdmin();  // ← nuevo
     this.cargar();
   }
 
@@ -71,6 +74,15 @@ export class UsuariosEmpresaComponent implements OnInit {
               rolId: this.fb.control<number | null>(null)
             });
           }
+          // ← nuevo: cargar rol actual de cada empleado
+          this.rolXEmpleado.porEmpleado(emp.id).subscribe({
+            next: (roles) => {
+              this.rolesActuales[emp.id] = roles.length > 0
+                ? roles.map(r => `${r.nombreRol ?? '?'} (${r.permiso ?? ''})`).join(', ')
+                : 'Sin rol';
+            },
+            error: () => { this.rolesActuales[emp.id] = 'Sin rol'; }
+          });
         }
         this.cargando = false;
       },
@@ -95,15 +107,12 @@ export class UsuariosEmpresaComponent implements OnInit {
         nombre: v.nombre.trim(),
         tipoDocumento: v.tipoDocumento,
         numeroDocumento: v.numeroDocumento.trim(),
-        credencial: {
-          correo: v.correo.trim(),
-          contrasena: v.contrasena
-        }
+        credencial: { correo: v.correo.trim(), contrasena: v.contrasena }
       })
       .pipe(finalize(() => (this.invitando = false)))
       .subscribe({
         next: () => {
-          this.notify.exito('Usuario creado. Rol de sistema: lector (predeterminado).');
+          this.notify.exito('Usuario creado. Asígnale un rol funcional desde la lista.');
           this.invitarForm.reset({ tipoDocumento: 'CC', nombre: '', numeroDocumento: '', correo: '', contrasena: '' });
           this.cargar();
         },
@@ -129,7 +138,17 @@ export class UsuariosEmpresaComponent implements OnInit {
       .asignar({ empleadoId, rolId })
       .pipe(finalize(() => (this.asignando[empleadoId] = false)))
       .subscribe({
-        next: () => this.notify.exito('Rol funcional asignado.'),
+        next: () => {
+          this.notify.exito('Rol funcional asignado.');
+          // refrescar el rol mostrado
+          this.rolXEmpleado.porEmpleado(empleadoId).subscribe({
+            next: (roles) => {
+              this.rolesActuales[empleadoId] = roles.length > 0
+                ? roles.map(r => `${r.nombreRol ?? '?'} (${r.permiso ?? ''})`).join(', ')
+                : 'Sin rol';
+            }
+          });
+        },
         error: () => this.notify.error('No se pudo asignar el rol.')
       });
   }

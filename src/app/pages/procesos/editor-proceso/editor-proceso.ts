@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { catchError, concatMap, forkJoin, from, map, Observable, of, switchMap, throwError, toArray } from 'rxjs';
 import { legadoDesdeEstado } from '../../../core/proceso-estado.util';
 import { puedeEditarProcesos } from '../../../core/roles.util';
 import {
@@ -48,6 +48,14 @@ interface ArcoUI {
 interface NodoOption {
   nodoId: number;
   label: string;
+}
+
+interface FlujoGuardadoTemporal {
+  nodosCreados: number[];
+  nodosVinculados: Set<number>;
+  actividadesCreadas: number[];
+  gatewaysCreados: number[];
+  arcosCreados: number[];
 }
 
 @Component({
@@ -116,6 +124,17 @@ export class EditorProcesoComponent implements OnInit {
 
   private nextTempNodoId(): number {
     return this.tempSeq--;
+  }
+
+  private ejecutarSecuencialmente<TEntrada, TSalida>(
+    items: readonly TEntrada[],
+    ejecutar: (item: TEntrada) => Observable<TSalida>
+  ): Observable<TSalida[]> {
+    if (!items.length) {
+      return of([]);
+    }
+
+    return from(items).pipe(concatMap((item) => ejecutar(item)), toArray());
   }
 
   private cargarEdicion(id: number): void {
@@ -391,41 +410,7 @@ export class EditorProcesoComponent implements OnInit {
 
     return afterDeletes.pipe(
       switchMap(() => this.resolverMapaNodos(procesoId, nit)),
-      switchMap((mapa) => {
-        const mapNid = (nid: number) => (nid < 0 ? mapa.get(nid) ?? nid : nid);
-
-        const actOps: Observable<unknown>[] = this.actividades.map((a) => {
-          const nid = mapNid(a.nodoId);
-          const body: ActividadRequest = {
-            nodoId: nid,
-            descripcion: a.descripcion,
-            tipoActividad: a.tipoActividad ?? undefined,
-            laneId: a.laneId ?? undefined
-          };
-          return a.id
-            ? this.actividadService.actualizar(a.id, body, idEmpleado)
-            : this.actividadService.crear(body);
-        });
-
-        const gwOps: Observable<unknown>[] = this.gateways.map((g) => {
-          const nid = mapNid(g.nodoId);
-          const body: GatewayRequest = { nodoId: nid, tipoGateway: g.tipoGateway };
-          return g.id ? this.gatewayService.actualizar(g.id, body) : this.gatewayService.crear(body);
-        });
-
-        const arOps: Observable<unknown>[] = this.arcos.map((ar) => {
-          const body: ArcoRequest = {
-            idProceso: procesoId,
-            nodoOrigenId: mapNid(ar.nodoOrigenId),
-            nodoDestinoId: mapNid(ar.nodoDestinoId),
-            nitEmpresa: nit
-          };
-          return ar.id ? this.arcoService.actualizar(ar.id, body) : this.arcoService.crear(body);
-        });
-
-        const all = [...actOps, ...gwOps, ...arOps];
-        return all.length ? forkJoin(all) : of(null);
-      })
+      switchMap((mapa) => this.persistirFlujoConRollback(procesoId, nit, idEmpleado, mapa))
     );
   }
 
@@ -438,7 +423,9 @@ export class EditorProcesoComponent implements OnInit {
       if (ar.nodoDestinoId < 0) temps.add(ar.nodoDestinoId);
     }
 
-    const jobs = [...temps].map((tempId) => {
+    const jobs = [...temps].sort((a, b) => a - b);
+
+    const crearNodo = (tempId: number) => {
       const act = this.actividades.find((x) => x.nodoId === tempId);
       const gw = this.gateways.find((x) => x.nodoId === tempId);
       const nombre = act?.nombreNodo?.trim() || gw?.nombreNodo?.trim() || `Nodo ${tempId}`;
@@ -449,21 +436,140 @@ export class EditorProcesoComponent implements OnInit {
           idProceso: procesoId,
           tipo,
           nombre,
-          coordenadaX: null,
-          coordenadaY: null
+          coordenadaX: 0,
+          coordenadaY: 0
         })
         .pipe(map((n) => ({ temp: tempId, real: n.id })));
-    });
+    };
 
     if (!jobs.length) return of(new Map());
 
-    return forkJoin(jobs).pipe(
+    return this.ejecutarSecuencialmente(jobs, crearNodo).pipe(
       map((pairs) => {
         const m = new Map<number, number>();
         for (const p of pairs) m.set(p.temp, p.real);
         return m;
       })
     );
+  }
+
+  private persistirFlujoConRollback(
+    procesoId: number,
+    nit: string,
+    idEmpleado: number | undefined,
+    mapa: Map<number, number>
+  ): Observable<unknown> {
+    // Si algo falla después de crear nodos, limpiamos lo ya materializado para no dejar flujo parcial.
+    const estado: FlujoGuardadoTemporal = {
+      nodosCreados: [...mapa.values()],
+      nodosVinculados: new Set<number>(),
+      actividadesCreadas: [],
+      gatewaysCreados: [],
+      arcosCreados: []
+    };
+
+    const mapNid = (nid: number) => (nid < 0 ? mapa.get(nid) ?? nid : nid);
+
+    return this.crearActividadesSecuencialmente(mapNid, idEmpleado, estado).pipe(
+      switchMap(() => this.crearGatewaysSecuencialmente(mapNid, estado)),
+      switchMap(() => this.crearArcosSecuencialmente(procesoId, nit, mapNid, estado)),
+      map(() => null),
+      catchError((error) =>
+        this.revertirFlujoGuardado(estado, idEmpleado).pipe(switchMap(() => throwError(() => error)))
+      )
+    );
+  }
+
+  private crearActividadesSecuencialmente(
+    mapNid: (nid: number) => number,
+    idEmpleado: number | undefined,
+    estado: FlujoGuardadoTemporal
+  ): Observable<unknown> {
+    return this.ejecutarSecuencialmente(this.actividades, (a) => {
+      const nid = mapNid(a.nodoId);
+      const body: ActividadRequest = {
+        nodoId: nid,
+        descripcion: a.descripcion,
+        tipoActividad: a.tipoActividad ?? undefined,
+        laneId: a.laneId ?? undefined
+      };
+      const request$ = a.id
+        ? this.actividadService.actualizar(a.id, body, idEmpleado)
+        : this.actividadService.crear(body);
+
+      return request$.pipe(
+        map((respuesta) => {
+          estado.nodosVinculados.add(respuesta.nodoId);
+          if (!a.id) {
+            estado.actividadesCreadas.push(respuesta.id);
+          }
+          return respuesta;
+        })
+      );
+    }).pipe(map(() => null));
+  }
+
+  private crearGatewaysSecuencialmente(
+    mapNid: (nid: number) => number,
+    estado: FlujoGuardadoTemporal
+  ): Observable<unknown> {
+    return this.ejecutarSecuencialmente(this.gateways, (g) => {
+      const nid = mapNid(g.nodoId);
+      const body: GatewayRequest = { nodoId: nid, tipoGateway: g.tipoGateway };
+      const request$ = g.id ? this.gatewayService.actualizar(g.id, body) : this.gatewayService.crear(body);
+
+      return request$.pipe(
+        map((respuesta) => {
+          estado.nodosVinculados.add(respuesta.nodoId);
+          if (!g.id) {
+            estado.gatewaysCreados.push(respuesta.id);
+          }
+          return respuesta;
+        })
+      );
+    }).pipe(map(() => null));
+  }
+
+  private crearArcosSecuencialmente(
+    procesoId: number,
+    nit: string,
+    mapNid: (nid: number) => number,
+    estado: FlujoGuardadoTemporal
+  ): Observable<unknown> {
+    return this.ejecutarSecuencialmente(this.arcos, (ar) => {
+      const body: ArcoRequest = {
+        idProceso: procesoId,
+        nodoOrigenId: mapNid(ar.nodoOrigenId),
+        nodoDestinoId: mapNid(ar.nodoDestinoId),
+        nitEmpresa: nit
+      };
+      return ar.id
+        ? this.arcoService.actualizar(ar.id, body)
+        : this.arcoService.crear(body).pipe(
+            map((respuesta) => {
+              estado.arcosCreados.push(respuesta.id);
+              return respuesta;
+            })
+          );
+    }).pipe(map(() => null));
+  }
+
+  private revertirFlujoGuardado(
+    estado: FlujoGuardadoTemporal,
+    idEmpleado: number | undefined
+  ): Observable<unknown> {
+    const nodoIdsOrfanos = estado.nodosCreados.filter((nodoId) => !estado.nodosVinculados.has(nodoId));
+
+    const limpiezas: Observable<unknown>[] = [
+      ...estado.arcosCreados.map((id) => this.arcoService.eliminar(id).pipe(catchError(() => of(null)))),
+      ...estado.actividadesCreadas.map((id) =>
+        this.actividadService.eliminar(id, idEmpleado).pipe(catchError(() => of(null)))
+      ),
+      ...estado.gatewaysCreados.map((id) => this.gatewayService.eliminar(id).pipe(catchError(() => of(null)))),
+      ...nodoIdsOrfanos.map((id) => this.nodoService.eliminar(id).pipe(catchError(() => of(null))))
+    ];
+
+    return limpiezas.length ? forkJoin(limpiezas).pipe(map(() => null)) : of(null);
   }
 
   volver(): void {

@@ -49,11 +49,13 @@ export class RegistroEmpresaComponent {
       .pipe(finalize(() => (this.cargando = false)))
       .subscribe({
         next: (res) => {
-          if (res.mensajeRegistro) {
-            this.notify.exito(res.mensajeRegistro);
-          }
-          void this.router.navigateByUrl('/login');
-        },
+  this.notify.exito(
+    res.mensajeRegistro ||
+      'Empresa registrada correctamente. Enviamos un correo de verificacion. Debes verificarlo antes de iniciar sesion.'
+  );
+
+  void this.router.navigateByUrl('/login');
+},
         error: (err: HttpErrorResponse | Error) => {
           if (err instanceof HttpErrorResponse) {
             const e = err.error;

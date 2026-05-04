@@ -198,18 +198,22 @@ export class AuthService {
   }
 
   private tryReadBackendMessage(payload: unknown): string | null {
-    if (typeof payload === 'string' && payload.trim()) {
-      return payload;
-    }
-
-    if (this.hasObjectProperty(payload, 'message') && typeof payload['message'] === 'string') {
-      return payload['message'];
-    }
-
-    if (this.hasObjectProperty(payload, 'error') && typeof payload['error'] === 'string') {
-      return payload['error'];
-    }
-
-    return null;
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
   }
+
+  if (this.hasObjectProperty(payload, 'mensaje') && typeof payload['mensaje'] === 'string') {
+    return payload['mensaje'];
+  }
+
+  if (this.hasObjectProperty(payload, 'message') && typeof payload['message'] === 'string') {
+    return payload['message'];
+  }
+
+  if (this.hasObjectProperty(payload, 'error') && typeof payload['error'] === 'string') {
+    return payload['error'];
+  }
+
+  return null;
+}
 }

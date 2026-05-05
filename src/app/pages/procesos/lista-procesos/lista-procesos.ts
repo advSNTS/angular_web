@@ -8,7 +8,7 @@ import { AuthService } from '../../../services/auth.service';
 import { ProcesoService } from '../../../services/proceso.service';
 import { NotificationService } from '../../../services/notification.service';
 import { EstadoProceso, ProcesoResponse } from '../../../models/proceso';
-
+import { finalize, switchMap } from 'rxjs';
 @Component({
   selector: 'app-lista-procesos',
   standalone: true,
@@ -43,20 +43,29 @@ export class ListaProcesosComponent implements OnInit {
   }
 
   cargarProcesos(): void {
-    this.cargando = true;
-    this.error = '';
-    this.procesoService.obtenerTodos().subscribe({
+  this.cargando = true;
+  this.error = '';
+
+  this.authService
+    .getNitEmpresaSeguro()
+    .pipe(
+      switchMap(() => this.procesoService.obtenerTodos()),
+      finalize(() => (this.cargando = false))
+    )
+    .subscribe({
       next: (data) => {
         this.procesos = data;
         this.filtrar();
-        this.cargando = false;
       },
-      error: () => {
-        this.error = 'Error al cargar los procesos. Verifica el backend o el inicio de sesión.';
-        this.cargando = false;
+      error: (err: Error) => {
+        this.procesos = [];
+        this.procesosFiltrados = [];
+        this.error =
+          err.message ||
+          'Error al cargar los procesos. Verifica el backend o el inicio de sesión.';
       }
     });
-  }
+}
 
   filtrar(): void {
     this.procesosFiltrados = this.procesos.filter((p) => {

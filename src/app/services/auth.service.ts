@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable, PLATFORM_ID } from '@angular/core';
-import { BehaviorSubject, Observable, catchError, map, tap, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, filter, map, of, take, tap, throwError, timeout } from 'rxjs';
 import { AUTH_LOGIN_URL } from '../config/auth.config';
 import { decodeJwtPayload } from '../core/jwt.util';
 import { rolesDesdeAuthorities } from '../core/roles.util';
@@ -52,6 +52,24 @@ export class AuthService {
   getNitEmpresa(): string | null {
     return this.getSesionActual()?.nitEmpresa ?? null;
   }
+  /** Espera a que la sesión tenga NIT de empresa antes de cargar pantallas. */
+getNitEmpresaSeguro(): Observable<string> {
+  const nitActual = this.getNitEmpresa();
+
+  if (nitActual) {
+    return of(nitActual);
+  }
+
+  return this.session$.pipe(
+    map((session) => session?.nitEmpresa ?? null),
+    filter((nit): nit is string => !!nit),
+    take(1),
+    timeout({
+      first: 3000,
+      with: () => throwError(() => new Error('No se encontró una empresa en la sesión.'))
+    })
+  );
+}
 
   getRolesSistema(): string[] {
     return this.getSesionActual()?.rolesSistema ?? [];

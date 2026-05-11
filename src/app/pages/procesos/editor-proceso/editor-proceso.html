@@ -40,6 +40,16 @@
             <option *ngFor="let e of estados" [value]="e">{{ e }}</option>
           </select>
         </label>
+
+        <label>
+          <span>Pool del proceso *</span>
+          <select [(ngModel)]="form.poolId" name="poolId" required (ngModelChange)="onPoolChange()" [disabled]="esLector">
+            <option [ngValue]="null">Selecciona un pool</option>
+            <option *ngFor="let pool of pools" [ngValue]="pool.id">
+              {{ pool.nombre || ('Pool ' + pool.id) }}
+            </option>
+          </select>
+        </label>
       </section>
 
       <section class="form-section">
@@ -47,6 +57,8 @@
           <h3>Actividades</h3>
           <button class="btn-action" type="button" (click)="agregarActividad()" [disabled]="esLector">+ Agregar actividad</button>
         </div>
+
+        <p class="hint">Cada actividad debe elegirse dentro de un lane que pertenezca al pool del proceso.</p>
 
         <div *ngIf="!actividades.length" class="vacio">No hay actividades.</div>
 
@@ -63,6 +75,16 @@
               <span>Descripción *</span>
               <input [(ngModel)]="a.descripcion" [name]="'actDesc' + i" required [disabled]="esLector" />
             </label>
+
+            <label>
+              <span>Lane *</span>
+              <select [(ngModel)]="a.laneId" [name]="'actLane' + i" required [disabled]="esLector || !lanesDisponibles.length">
+                <option [ngValue]="null">Selecciona un lane</option>
+                <option *ngFor="let lane of lanesDisponibles" [ngValue]="lane.id">
+                  {{ lane.nombre }}
+                </option>
+              </select>
+            </label>
           </div>
 
           <div class="flow-actions">
@@ -76,6 +98,8 @@
           <h3>Gateways</h3>
           <button class="btn-action" type="button" (click)="agregarGateway()" [disabled]="esLector">+ Agregar gateway</button>
         </div>
+
+        <p class="hint">Los gateways heredan el pool del proceso; en el backend no tienen lane propio.</p>
 
         <div *ngIf="!gateways.length" class="vacio">No hay gateways.</div>
 

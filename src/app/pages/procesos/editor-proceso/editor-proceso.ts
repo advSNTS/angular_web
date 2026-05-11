@@ -9,7 +9,9 @@ import {
   ActividadRequest,
   ArcoRequest,
   EstadoProceso,
+  LaneResponse,
   GatewayRequest,
+  PoolResponse,
   ProcesoRequest,
   ProcesoResponse
 } from '../../../models/proceso';
@@ -17,7 +19,9 @@ import { ActividadService } from '../../../services/actividad.service';
 import { ArcoService } from '../../../services/arco.service';
 import { AuthService } from '../../../services/auth.service';
 import { GatewayService } from '../../../services/gateway.service';
+import { LaneService } from '../../../services/lane.service';
 import { NodoService } from '../../../services/nodo.service';
+import { PoolService } from '../../../services/pool.service';
 import { ProcesoService } from '../../../services/proceso.service';
 import { estadoDesdeResponse } from '../../../core/proceso-estado.util';
 
@@ -73,6 +77,8 @@ export class EditorProcesoComponent implements OnInit {
   private readonly gatewayService = inject(GatewayService);
   private readonly arcoService = inject(ArcoService);
   private readonly nodoService = inject(NodoService);
+  private readonly poolService = inject(PoolService);
+  private readonly laneService = inject(LaneService);
   private readonly auth = inject(AuthService);
 
   esEdicion = false;
@@ -87,7 +93,8 @@ export class EditorProcesoComponent implements OnInit {
     nombre: '',
     descripcion: '',
     categoria: '',
-    estado: 'BORRADOR' as EstadoProceso
+    estado: 'BORRADOR' as EstadoProceso,
+    poolId: null as number | null
   };
 
   categorias = ['Comercial', 'Administrativo', 'Finanzas', 'Operaciones', 'RRHH', 'TI'];
@@ -96,6 +103,8 @@ export class EditorProcesoComponent implements OnInit {
   actividades: ActividadUI[] = [];
   gateways: GatewayUI[] = [];
   arcos: ArcoUI[] = [];
+  pools: PoolResponse[] = [];
+  lanesDisponibles: LaneResponse[] = [];
 
   deletedActividadIds: number[] = [];
   deletedGatewayIds: number[] = [];
@@ -111,6 +120,7 @@ export class EditorProcesoComponent implements OnInit {
       this.error = 'No tienes permiso para editar procesos.';
       return;
     }
+    this.cargarPools();
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.reconstruirNodosDisponibles();
@@ -150,7 +160,8 @@ export class EditorProcesoComponent implements OnInit {
           nombre: proceso.nombre,
           descripcion: proceso.descripcion,
           categoria: proceso.categoria,
-          estado: est
+          estado: est,
+          poolId: proceso.poolId ?? null
         };
 
         this.actividades = actividades.map((a) => ({
@@ -176,9 +187,50 @@ export class EditorProcesoComponent implements OnInit {
         }));
 
         this.reconstruirNodosDisponibles();
+        this.cargarLanesDelPool(this.form.poolId);
       },
       error: () => {
         this.error = 'No fue posible cargar la información del proceso.';
+      }
+    });
+  }
+
+  private cargarPools(): void {
+    this.poolService.listar().subscribe({
+      next: (pools) => {
+        this.pools = pools;
+        if (!this.form.poolId && pools.length === 1) {
+          this.form.poolId = pools[0].id;
+          this.cargarLanesDelPool(this.form.poolId);
+        }
+      },
+      error: () => {
+        this.error = 'No fue posible cargar los pools de la empresa.';
+      }
+    });
+  }
+
+  onPoolChange(): void {
+    this.cargarLanesDelPool(this.form.poolId);
+  }
+
+  private cargarLanesDelPool(poolId: number | null): void {
+    this.lanesDisponibles = [];
+    if (!poolId) {
+      this.actividades = this.actividades.map((a) => ({ ...a, laneId: null }));
+      return;
+    }
+
+    this.laneService.listarPorPool(poolId).subscribe({
+      next: (lanes) => {
+        this.lanesDisponibles = lanes;
+        const lanesIds = new Set(lanes.map((l) => l.id));
+        this.actividades = this.actividades.map((a) =>
+          a.laneId && !lanesIds.has(a.laneId) ? { ...a, laneId: null } : a
+        );
+      },
+      error: () => {
+        this.error = 'No fue posible cargar los lanes del pool seleccionado.';
       }
     });
   }
@@ -300,6 +352,10 @@ export class EditorProcesoComponent implements OnInit {
       return 'El nombre y la categoría son obligatorios.';
     }
 
+    if (!this.form.poolId) {
+      return 'Debes seleccionar un pool para el proceso.';
+    }
+
     const nodoIds = new Set<number>();
     for (const a of this.actividades) {
       if (nodoIds.has(a.nodoId)) return 'Hay nodoId duplicado en actividades.';
@@ -313,6 +369,10 @@ export class EditorProcesoComponent implements OnInit {
     for (const [idx, a] of this.actividades.entries()) {
       if (!a.nombreNodo.trim()) return `Actividad #${idx + 1}: el nombre del nodo es obligatorio.`;
       if (!a.descripcion.trim()) return `Actividad #${idx + 1}: la descripción es obligatoria.`;
+      if (!a.laneId) return `Actividad #${idx + 1}: selecciona un lane.`;
+      if (!this.lanesDisponibles.some((l) => l.id === a.laneId)) {
+        return `Actividad #${idx + 1}: el lane no pertenece al pool seleccionado.`;
+      }
     }
 
     for (const [idx, g] of this.gateways.entries()) {
@@ -364,7 +424,8 @@ export class EditorProcesoComponent implements OnInit {
       estado: this.form.estado,
       borrador: leg.borrador,
       activo: leg.activo,
-      nitEmpresa: nit
+      nitEmpresa: nit,
+      poolId: this.form.poolId
     };
 
     const idEmpleado = this.auth.getSesionActual()?.id;

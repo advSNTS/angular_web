@@ -2,13 +2,15 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { finalize, switchMap } from 'rxjs';
 import { claseEstado, estadoDesdeResponse, labelEstado } from '../../../core/proceso-estado.util';
 import { puedeEditarProcesos, esAdministradorEmpresa } from '../../../core/roles.util';
+import { ProcesoResponse, EstadoProceso, PoolResponse } from '../../../models/proceso';
 import { AuthService } from '../../../services/auth.service';
-import { ProcesoService } from '../../../services/proceso.service';
 import { NotificationService } from '../../../services/notification.service';
-import { EstadoProceso, ProcesoResponse } from '../../../models/proceso';
-import { finalize, switchMap } from 'rxjs';
+import { PoolService } from '../../../services/pool.service';
+import { ProcesoService } from '../../../services/proceso.service';
+
 @Component({
   selector: 'app-lista-procesos',
   standalone: true,
@@ -18,20 +20,24 @@ import { finalize, switchMap } from 'rxjs';
 })
 export class ListaProcesosComponent implements OnInit {
   private readonly procesoService = inject(ProcesoService);
+  private readonly poolService = inject(PoolService);
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly notify = inject(NotificationService);
 
   procesos: ProcesoResponse[] = [];
   procesosFiltrados: ProcesoResponse[] = [];
+  pools: PoolResponse[] = [];
   cargando = true;
   error = '';
   busqueda = '';
   filtroCategoria = '';
   filtroEstado: '' | EstadoProceso = '';
+  poolActivoId: number | null = null;
+  cambiarPoolVisible = false;
 
   ngOnInit(): void {
-    this.cargarProcesos();
+    this.cargarPoolsYProcesos();
   }
 
   get puedeEditar(): boolean {
@@ -42,30 +48,65 @@ export class ListaProcesosComponent implements OnInit {
     return esAdministradorEmpresa(this.authService.getSesionActual()?.rolesSistema);
   }
 
-  cargarProcesos(): void {
-  this.cargando = true;
-  this.error = '';
+  get poolActivo(): PoolResponse | undefined {
+    return this.pools.find((p) => p.id === this.poolActivoId);
+  }
 
-  this.authService
-    .getNitEmpresaSeguro()
-    .pipe(
-      switchMap(() => this.procesoService.obtenerTodos()),
-      finalize(() => (this.cargando = false))
-    )
-    .subscribe({
-      next: (data) => {
-        this.procesos = data;
-        this.filtrar();
-      },
-      error: (err: Error) => {
-        this.procesos = [];
-        this.procesosFiltrados = [];
-        this.error =
-          err.message ||
-          'Error al cargar los procesos. Verifica el backend o el inicio de sesión.';
-      }
-    });
-}
+  cargarPoolsYProcesos(): void {
+    this.cargando = true;
+    this.error = '';
+
+    this.authService
+      .getNitEmpresaSeguro()
+      .pipe(
+        switchMap(() => this.poolService.listar()),
+        switchMap((pools) => {
+          this.pools = pools;
+          const activo =
+            this.poolService.getPoolActivoId() ?? pools.find((p) => p.esDefault)?.id ?? pools[0]?.id ?? null;
+          this.poolActivoId = activo;
+          this.poolService.setPoolActivoId(activo);
+          return activo != null ? this.procesoService.obtenerPorPool(activo) : this.procesoService.obtenerTodos();
+        }),
+        finalize(() => (this.cargando = false))
+      )
+      .subscribe({
+        next: (data) => {
+          this.procesos = data;
+          this.filtrar();
+        },
+        error: (err: Error) => {
+          this.procesos = [];
+          this.procesosFiltrados = [];
+          this.error = err.message || 'Error al cargar los procesos. Verifica el backend o el inicio de sesiÃ³n.';
+        }
+      });
+  }
+
+  cargarProcesos(): void {
+    if (this.poolActivoId == null) {
+      this.procesos = [];
+      this.procesosFiltrados = [];
+      return;
+    }
+
+    this.cargando = true;
+    this.error = '';
+    this.procesoService
+      .obtenerPorPool(this.poolActivoId)
+      .pipe(finalize(() => (this.cargando = false)))
+      .subscribe({
+        next: (data) => {
+          this.procesos = data;
+          this.filtrar();
+        },
+        error: (err: Error) => {
+          this.procesos = [];
+          this.procesosFiltrados = [];
+          this.error = err.message || 'Error al cargar los procesos.';
+        }
+      });
+  }
 
   filtrar(): void {
     this.procesosFiltrados = this.procesos.filter((p) => {
@@ -75,6 +116,17 @@ export class ListaProcesosComponent implements OnInit {
       const estadoOk = this.filtroEstado ? est === this.filtroEstado : true;
       return nombreOk && catOk && estadoOk;
     });
+  }
+
+  toggleCambiarPool(): void {
+    this.cambiarPoolVisible = !this.cambiarPoolVisible;
+  }
+
+  cambiarPool(poolId: number | null): void {
+    this.poolActivoId = poolId;
+    this.poolService.setPoolActivoId(poolId);
+    this.cambiarPoolVisible = false;
+    this.cargarProcesos();
   }
 
   ver(proceso: ProcesoResponse, ev: Event): void {

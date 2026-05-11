@@ -129,6 +129,12 @@ export interface PoolResponse {
   esDefault?: boolean;
 }
 
+export interface PoolRequest {
+  nombre: string;
+  descripcion?: string | null;
+  esDefault?: boolean;
+}
+
 export interface EmpresaRequest {
   nit: string;
   nombre: string;

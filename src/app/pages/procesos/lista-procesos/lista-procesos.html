@@ -4,12 +4,32 @@
       <p class="eyebrow">Sistema de Gestión</p>
       <h1>Procesos</h1>
       <p>Crea, filtra y abre el detalle con el modelador visual.</p>
+      <div class="pool-actual">
+        <span class="pool-chip">
+          Pool actual:
+          <strong>{{ poolActivo?.nombre || 'Sin pool activa' }}</strong>
+        </span>
+        <button type="button" class="btn-mini" (click)="toggleCambiarPool()">Cambiar pool</button>
+      </div>
     </div>
 
     @if (puedeEditar) {
       <button type="button" class="btn-primary" (click)="nuevo()">Nuevo proceso</button>
     }
   </div>
+
+  @if (cambiarPoolVisible && pools.length) {
+    <div class="selector-pool">
+      <label>
+        <span>Selecciona una pool</span>
+        <select [(ngModel)]="poolActivoId" (change)="cambiarPool(poolActivoId!)">
+          <option *ngFor="let pool of pools" [ngValue]="pool.id">
+            {{ pool.nombre || ('Pool ' + pool.id) }}{{ pool.esDefault ? ' (por defecto)' : '' }}
+          </option>
+        </select>
+      </label>
+    </div>
+  }
 
   <div class="filtros">
     <input

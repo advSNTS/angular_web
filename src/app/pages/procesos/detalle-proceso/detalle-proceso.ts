@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, defer, forkJoin, map, of, finalize, Observable, switchMap, timeout, tap, throwError } from 'rxjs';
 import { claseEstado, labelEstado } from '../../../core/proceso-estado.util';
 import { esAdministradorEmpresa, puedeEditarProcesos } from '../../../core/roles.util';
 import {
@@ -62,23 +62,31 @@ export class DetalleProcesoComponent implements OnInit {
   arcos: ArcoResponse[] = [];
   lanes: LaneResponse[] = [];
   historial: HistorialProcesoApi[] = [];
+  historialCargando = false;
+  historialCargado = false;
 
   compartidos: ProcesoCompartidoResponse[] = [];
   poolsDestino: PoolResponse[] = [];
   sharePoolId: number | null = null;
   sharePermiso: PermisoCompartido = 'LECTURA';
   compartiendo = false;
+  compartidosCargando = false;
+  compartidosCargados = false;
 
   throws: MensajeThrowResponse[] = [];
   catches: MensajeCatchResponse[] = [];
   tareas: TareaIntegracionResponse[] = [];
   externos: MensajeExternoResponse[] = [];
+  mensajesCargando = false;
+  mensajesCargados = false;
 
   nuevoThrow = { nombreMensaje: '', payloadTemplate: '' };
   nuevoCatch = { nombreMensaje: '', correlacionExpr: '', iniciarNuevaInstancia: false };
   nuevaTarea = { mensajeExternoId: null as number | null, payloadMapping: '' };
 
   cargando = true;
+  pasoCarga = 'Inicializando...';
+  trazasCarga: string[] = [];
   tabActiva:
     | 'flujo'
     | 'diagrama'
@@ -104,48 +112,165 @@ export class DetalleProcesoComponent implements OnInit {
 
   cargarDatos(id: number): void {
     this.cargando = true;
-    forkJoin({
-      proceso: this.procesoService.obtenerPorId(id),
-      actividades: this.actividadService.obtenerPorProceso(id),
-      gateways: this.gatewayService.obtenerPorProceso(id),
-      arcos: this.arcoService.obtenerPorProceso(id),
-      historial: this.procesoService.obtenerHistorial(id),
-      throws: this.msgThrow.listarPorProceso(id),
-      catches: this.msgCatch.listarPorProceso(id),
-      tareas: this.tareaInt.listarPorProceso(id),
-      externos: this.msgExt.listar().pipe(catchError(() => of([] as MensajeExternoResponse[]))),
-      pools: this.poolService.listar().pipe(catchError(() => of([] as PoolResponse[]))),
-      compartidos: this.procesoService
-        .listarCompartidos(id)
-        .pipe(catchError(() => of([] as ProcesoCompartidoResponse[])))
-    }).subscribe({
-      next: (res) => {
-        this.proceso = res.proceso;
-        this.actividades = res.actividades;
-        this.gateways = res.gateways;
-        this.arcos = res.arcos;
-        this.historial = res.historial;
-        this.throws = res.throws;
-        this.catches = res.catches;
-        this.tareas = res.tareas;
-        this.externos = res.externos;
-        this.poolsDestino = res.pools;
-        this.compartidos = res.compartidos;
-
-        const poolId = res.proceso.poolId;
-        if (poolId) {
-          this.laneService.listarPorPool(poolId).subscribe({
-            next: (l) => (this.lanes = l),
-            error: () => (this.lanes = [])
-          });
+    this.pasoCarga = 'Preparando solicitudes...';
+    this.trazasCarga = [];
+    this.marcarCarga('inicio', `cargando proceso ${id}`);
+    defer(() =>
+      forkJoin({
+        proceso: this.solicitarCarga('proceso', () => this.procesoService.obtenerPorId(id)),
+        actividades: this.solicitarCarga('actividades', () => this.actividadService.obtenerPorProceso(id), [] as ActividadResponse[]),
+        gateways: this.solicitarCarga('gateways', () => this.gatewayService.obtenerPorProceso(id), [] as GatewayResponse[]),
+        arcos: this.solicitarCarga('arcos', () => this.arcoService.obtenerPorProceso(id), [] as ArcoResponse[])
+      })
+    )
+      .pipe(
+        switchMap((res) => {
+          const poolId = res.proceso.poolId;
+          if (!poolId) {
+            this.marcarCarga('lanes', 'sin pool, omitiendo lanes');
+            return of({ res, lanes: [] as LaneResponse[] });
+          }
+          this.marcarCarga('lanes', `cargando lanes del pool ${poolId}`);
+          return this.laneService.listarPorPool(poolId).pipe(
+            timeout({ first: 10000 }),
+            catchError((error) => {
+              this.marcarCarga('lanes', `error al cargar lanes del pool ${poolId}`);
+              console.error('[DetalleProceso] lanes error', error);
+              return of([] as LaneResponse[]);
+            }),
+            map((lanes) => ({ res, lanes }))
+          );
+        }),
+        finalize(() => (this.cargando = false))
+      )
+      .subscribe({
+        next: ({ res, lanes }) => {
+          this.marcarCarga('render', 'datos recibidos, renderizando vista');
+          this.proceso = res.proceso;
+          this.actividades = res.actividades;
+          this.gateways = res.gateways;
+          this.arcos = res.arcos;
+          this.lanes = lanes;
+          this.marcarCarga('completo', 'detalle cargado correctamente');
+          this.cargarHistorial(id);
+          this.cargarMensajes(id);
+          if (this.puedeCompartir) {
+            this.cargarCompartidos(id);
+          }
+        },
+        error: () => {
+          this.marcarCarga('error', 'fallo la carga del detalle');
+          this.notify.error('No se pudo cargar el proceso.');
         }
-        this.cargando = false;
-      },
-      error: () => {
-        this.notify.error('No se pudo cargar el proceso.');
-        this.cargando = false;
-      }
-    });
+      });
+  }
+
+  private cargarHistorial(id: number): void {
+    if (this.historialCargando || this.historialCargado) {
+      return;
+    }
+    this.historialCargando = true;
+    this.marcarCarga('historial', 'cargando historial');
+    this.procesoService
+      .obtenerHistorial(id)
+      .pipe(
+        timeout({ first: 10000 }),
+        catchError((error) => {
+          this.marcarCarga('historial', 'error al cargar historial');
+          console.error('[DetalleProceso] historial error', error);
+          return of([] as HistorialProcesoApi[]);
+        }),
+        finalize(() => (this.historialCargando = false))
+      )
+      .subscribe((historial) => {
+        this.historial = historial;
+        this.historialCargado = true;
+        this.marcarCarga('historial', 'historial cargado');
+      });
+  }
+
+  private cargarCompartidos(id: number): void {
+    if (this.compartidosCargando || this.compartidosCargados) {
+      return;
+    }
+    this.compartidosCargando = true;
+    this.marcarCarga('compartir', 'cargando pools y comparticiones');
+    forkJoin({
+      pools: this.solicitarCarga('pools', () => this.poolService.listar(), [] as PoolResponse[]),
+      compartidos: this.solicitarCarga('compartidos', () => this.procesoService.listarCompartidos(id), [] as ProcesoCompartidoResponse[])
+    })
+      .pipe(finalize(() => (this.compartidosCargando = false)))
+      .subscribe({
+        next: ({ pools, compartidos }) => {
+          this.poolsDestino = pools;
+          this.compartidos = compartidos;
+          this.compartidosCargados = true;
+          this.marcarCarga('compartir', 'datos de compartir cargados');
+        },
+        error: (error) => {
+          console.error('[DetalleProceso] compartir error', error);
+          this.compartidosCargados = true;
+          this.marcarCarga('compartir', 'error al cargar compartir');
+        }
+      });
+  }
+
+  private cargarMensajes(id: number): void {
+    if (this.mensajesCargando || this.mensajesCargados) {
+      return;
+    }
+    this.mensajesCargando = true;
+    this.marcarCarga('mensajes', 'cargando mensajes y tareas');
+    forkJoin({
+      throws: this.solicitarCarga('mensajes throw', () => this.msgThrow.listarPorProceso(id), [] as MensajeThrowResponse[]),
+      catches: this.solicitarCarga('mensajes catch', () => this.msgCatch.listarPorProceso(id), [] as MensajeCatchResponse[]),
+      tareas: this.solicitarCarga('tareas integracion', () => this.tareaInt.listarPorProceso(id), [] as TareaIntegracionResponse[]),
+      externos: this.solicitarCarga('mensajes externos', () => this.msgExt.listar(), [] as MensajeExternoResponse[])
+    })
+      .pipe(finalize(() => (this.mensajesCargando = false)))
+      .subscribe({
+        next: ({ throws, catches, tareas, externos }) => {
+          this.throws = throws;
+          this.catches = catches;
+          this.tareas = tareas;
+          this.externos = externos;
+          this.mensajesCargados = true;
+          this.marcarCarga('mensajes', 'mensajes cargados');
+        },
+        error: (error) => {
+          console.error('[DetalleProceso] mensajes error', error);
+          this.mensajesCargados = true;
+          this.marcarCarga('mensajes', 'error al cargar mensajes');
+        }
+      });
+  }
+
+  private solicitarCarga<T>(etiqueta: string, factory: () => Observable<T>, fallback?: T): Observable<T> {
+    this.marcarCarga(etiqueta, 'iniciando');
+    return defer(factory).pipe(
+      timeout({ first: 10000 }),
+      tap({
+        next: () => this.marcarCarga(etiqueta, 'respuesta OK'),
+        error: (error) => {
+          this.marcarCarga(etiqueta, 'respuesta ERROR');
+          console.error(`[DetalleProceso] ${etiqueta} error`, error);
+        }
+      }),
+      catchError((error) => {
+        if (fallback !== undefined) {
+          this.marcarCarga(etiqueta, 'usando fallback');
+          return of(fallback);
+        }
+        return throwError(() => error);
+      })
+    );
+  }
+
+  private marcarCarga(etapa: string, mensaje: string): void {
+    const marca = `${new Date().toISOString()} [${etapa}] ${mensaje}`;
+    this.pasoCarga = `${etapa}: ${mensaje}`;
+    this.trazasCarga = [...this.trazasCarga, marca].slice(-12);
+    console.debug('[DetalleProceso]', marca);
   }
 
   getEstado(proceso: ProcesoResponse): string {
@@ -158,7 +283,8 @@ export class DetalleProcesoComponent implements OnInit {
 
   estadoActividad(act: ActividadResponse): string {
     const lane = this.lanes.find((l) => l.id === act.laneId);
-    return lane ? lane.nombre : 'Sin carril';
+    if (lane) return lane.nombre;
+    return act.laneId ? 'Carril restringido' : 'Sin carril';
   }
 
   getBadgeGateway(tipo: string): string {
@@ -211,6 +337,22 @@ export class DetalleProcesoComponent implements OnInit {
           this.compartiendo = false;
         }
       });
+  }
+
+  seleccionarTab(tab: 'flujo' | 'diagrama' | 'historial' | 'compartir' | 'mensajes'): void {
+    this.tabActiva = tab;
+    if (!this.proceso) {
+      return;
+    }
+    if (tab === 'compartir') {
+      this.cargarCompartidos(this.proceso.id);
+    }
+    if (tab === 'historial') {
+      this.cargarHistorial(this.proceso.id);
+    }
+    if (tab === 'mensajes') {
+      this.cargarMensajes(this.proceso.id);
+    }
   }
 
   crearThrow(): void {

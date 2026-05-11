@@ -1,5 +1,11 @@
 <div class="detalle-shell">
   <div *ngIf="cargando" class="estado-mensaje">Cargando...</div>
+  <div *ngIf="cargando" class="debug-carga">
+    <p><strong>Paso actual:</strong> {{ pasoCarga }}</p>
+    <ul *ngIf="trazasCarga.length">
+      <li *ngFor="let t of trazasCarga">{{ t }}</li>
+    </ul>
+  </div>
 
   <ng-container *ngIf="!cargando && proceso">
     <div class="encabezado">
@@ -17,21 +23,26 @@
     </div>
 
     <div class="tabs">
-      <button type="button" [class.activa]="tabActiva === 'flujo'" (click)="tabActiva = 'flujo'">Flujo</button>
-      <button type="button" [class.activa]="tabActiva === 'diagrama'" (click)="tabActiva = 'diagrama'">Diagrama</button>
-      <button type="button" [class.activa]="tabActiva === 'historial'" (click)="tabActiva = 'historial'">Historial</button>
-      <button *ngIf="puedeCompartir" type="button" [class.activa]="tabActiva === 'compartir'" (click)="tabActiva = 'compartir'">
+      <button type="button" [class.activa]="tabActiva === 'flujo'" (click)="seleccionarTab('flujo')">Flujo</button>
+      <button type="button" [class.activa]="tabActiva === 'diagrama'" (click)="seleccionarTab('diagrama')">Diagrama</button>
+      <button type="button" [class.activa]="tabActiva === 'historial'" (click)="seleccionarTab('historial')">Historial</button>
+      <button *ngIf="puedeCompartir" type="button" [class.activa]="tabActiva === 'compartir'" (click)="seleccionarTab('compartir')">
         Compartir
       </button>
-      <button type="button" [class.activa]="tabActiva === 'mensajes'" (click)="tabActiva = 'mensajes'">Mensajes</button>
+      <button type="button" [class.activa]="tabActiva === 'mensajes'" (click)="seleccionarTab('mensajes')">Mensajes</button>
     </div>
 
     <div *ngIf="tabActiva === 'flujo'" class="tab-contenido">
-      <section class="seccion" *ngIf="lanes.length">
+      <section class="seccion">
         <h2>Carriles (lanes)</h2>
-        <div class="lane-strip">
-          <span *ngFor="let l of lanes" class="lane-pill">{{ l.nombre }}</span>
-        </div>
+        <ng-container *ngIf="lanes.length; else sinLanesVisibles">
+          <div class="lane-strip">
+            <span *ngFor="let l of lanes" class="lane-pill">{{ l.nombre }}</span>
+          </div>
+        </ng-container>
+        <ng-template #sinLanesVisibles>
+          <div class="vacio">No hay carriles visibles para tu rol en este pool.</div>
+        </ng-template>
       </section>
 
       <section class="seccion">
@@ -93,9 +104,10 @@
     <div *ngIf="tabActiva === 'historial'" class="tab-contenido">
       <section class="seccion">
         <h2>Historial de cambios</h2>
-        <div *ngIf="historial.length === 0" class="vacio">Sin historial registrado</div>
+        <div *ngIf="historialCargando" class="vacio">Cargando historial...</div>
+        <div *ngIf="!historialCargando && historial.length === 0" class="vacio">Sin historial registrado</div>
 
-        <div class="lista-historial">
+        <div *ngIf="!historialCargando" class="lista-historial">
           <div *ngFor="let h of historial" class="historial-item">
             <div class="historial-header">
               <span class="accion-edicion">{{ h.tipoAccion }}</span>
@@ -119,6 +131,7 @@
     <div *ngIf="tabActiva === 'compartir' && puedeCompartir" class="tab-contenido">
       <section class="seccion">
         <h2>Compartir con otro pool</h2>
+        <div *ngIf="compartidosCargando" class="vacio">Cargando pools y comparticiones...</div>
         <div class="share-form">
           <label>
             Pool destino
@@ -140,7 +153,7 @@
         </div>
 
         <h3>Comparticiones activas</h3>
-        <div *ngIf="!compartidos.length" class="vacio">Ninguna.</div>
+        <div *ngIf="!compartidosCargando && !compartidos.length" class="vacio">Ninguna.</div>
         <ul class="share-list">
           <li *ngFor="let c of compartidos">Pool {{ c.poolId }} — {{ c.permiso }}</li>
         </ul>
@@ -150,6 +163,7 @@
     <div *ngIf="tabActiva === 'mensajes'" class="tab-contenido">
       <section class="seccion">
         <h2>Mensajes throw</h2>
+        <div *ngIf="mensajesCargando" class="vacio">Cargando mensajes y tareas...</div>
         <div class="mini-form">
           <input [(ngModel)]="nuevoThrow.nombreMensaje" placeholder="Nombre del mensaje" />
           <input [(ngModel)]="nuevoThrow.payloadTemplate" placeholder="Payload (opcional)" />

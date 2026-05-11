@@ -17,8 +17,26 @@ export class LaneService {
     });
   }
 
+  listarPorEmpresa(): Observable<LaneResponse[]> {
+    return this.http.get<LaneResponse[]>(this.baseUrl, {
+      params: new HttpParams().set('nitEmpresa', this.requireNit())
+    });
+  }
+
+  listarPorEmpresaAdmin(): Observable<LaneResponse[]> {
+    return this.http.get<LaneResponse[]>(`${this.baseUrl}/admin`, {
+      params: new HttpParams().set('nitEmpresa', this.requireNit())
+    });
+  }
+
   listarPorPool(poolId: number): Observable<LaneResponse[]> {
     return this.http.get<LaneResponse[]>(`${this.baseUrl}/pool/${poolId}`, {
+      params: new HttpParams().set('nitEmpresa', this.requireNit())
+    });
+  }
+
+  listarPorPoolAdmin(poolId: number): Observable<LaneResponse[]> {
+    return this.http.get<LaneResponse[]>(`${this.baseUrl}/admin/pool/${poolId}`, {
       params: new HttpParams().set('nitEmpresa', this.requireNit())
     });
   }

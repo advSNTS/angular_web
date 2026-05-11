@@ -118,7 +118,7 @@ export interface LaneResponse {
 export interface LaneRequest {
   poolId: number;
   nombre: string;
-  rolProcesoId?: number | null;
+  rolProcesoId: number;
 }
 
 export interface PoolResponse {

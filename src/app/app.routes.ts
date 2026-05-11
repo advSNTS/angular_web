@@ -52,6 +52,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/admin/pool-admin/pool-admin.component').then((m) => m.PoolAdminComponent)
       },
       {
+        path: 'admin/lanes',
+        canActivate: [roleGuard(['ADMIN'])],
+        loadComponent: () => import('./pages/admin/lane-admin/lane-admin.component').then((m) => m.LaneAdminComponent)
+      },
+      {
         path: 'dashboard',
         loadComponent: () =>
           import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent)

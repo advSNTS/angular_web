@@ -142,6 +142,31 @@ h2 { margin: 0 0 1rem; font-size: 1.1rem; color: #93c5fd; display: flex; align-i
 
 .estado-mensaje { text-align: center; padding: 3rem; color: #94a3b8; }
 
+.debug-carga {
+  margin: -1rem 0 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.78);
+  color: #cbd5e1;
+  font-size: 0.85rem;
+}
+
+.debug-carga p {
+  margin: 0 0 0.6rem;
+}
+
+.debug-carga ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.debug-carga li {
+  margin: 0.2rem 0;
+  color: #94a3b8;
+  word-break: break-word;
+}
+
 .lane-strip { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .lane-pill {
   font-size: 0.82rem;

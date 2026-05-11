@@ -25,6 +25,12 @@ export class ProcesoService {
     });
   }
 
+  obtenerPorPool(poolId: number): Observable<ProcesoResponse[]> {
+    return this.http.get<ProcesoResponse[]>(this.baseUrl, {
+      params: this.nitParams().set('poolId', String(poolId))
+    });
+  }
+
   obtenerPorId(id: number): Observable<ProcesoResponse> {
     return this.http.get<ProcesoResponse>(`${this.baseUrl}/${id}`, {
       params: this.nitParams()

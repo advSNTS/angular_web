@@ -2,21 +2,51 @@
   <p class="eyebrow">Infraestructura</p>
   <h1>Pools de la empresa</h1>
   <p class="lead">
-    Cada empresa dispone de al menos un pool para sus procesos. La API actual expone solo lectura del pool; la edición de
-    nombre/descripción quedaría pendiente si el backend añade <code>PUT /api/pools/:id</code>.
+    Desde aqui­ puedes crear pools nuevos y marcar uno como pool activo para trabajar con sus procesos.
   </p>
+
+  <section class="panel panel-form">
+    <h2>Crear pool</h2>
+    <div class="form-grid">
+      <label>
+        <span>Nombre *</span>
+        <input [(ngModel)]="nuevoPool.nombre" name="nombre" placeholder="Ej: Pool Operaciones" />
+      </label>
+      <label>
+        <span>Descripcion</span>
+        <input [(ngModel)]="nuevoPool.descripcion" name="descripcion" placeholder="Descripcion opcional" />
+      </label>
+    </div>
+    <label class="check-row">
+      <input type="checkbox" [(ngModel)]="nuevoPool.esDefault" name="esDefault" />
+      Hacerlo pool por defecto
+    </label>
+    <button type="button" class="btn-primary" [disabled]="guardando" (click)="crearPool()">
+      {{ guardando ? 'Creando...' : 'Crear pool' }}
+    </button>
+  </section>
 
   @if (cargando) {
     <p class="muted">Cargando...</p>
   } @else if (!pools.length) {
-    <p class="muted">No hay pools visibles para el NIT de sesión.</p>
+    <p class="muted">No hay pools visibles para el NIT de sesiÃ³n.</p>
   } @else {
     @for (p of pools; track p.id) {
       <section class="panel">
-        <h2>Pool #{{ p.id }}</h2>
-        <p><strong>Nombre:</strong> {{ p.nombre || '—' }}</p>
-        <p><strong>Descripción:</strong> {{ p.descripcion || '—' }}</p>
+        <div class="pool-header">
+          <h2>{{ p.nombre || ('Pool #' + p.id) }}</h2>
+          @if (poolActivoId === p.id) {
+            <span class="badge-activo">Activo</span>
+          }
+        </div>
+        <p><strong>Nombre:</strong> {{ p.nombre || 'â€”' }}</p>
+        <p><strong>Descripcion:</strong> {{ p.descripcion || 'â€”' }}</p>
         <p><strong>NIT:</strong> {{ p.nitEmpresa || auth.getNitEmpresa() }}</p>
+        <div class="acciones">
+          <button type="button" class="btn-secondary" (click)="usarComoActivo(p.id)">
+            Usar como pool activo
+          </button>
+        </div>
       </section>
     }
   }

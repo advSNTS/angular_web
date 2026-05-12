@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, catchError, throwError } from 'rxjs';
 import { buildApiPath } from '../core/api-url';
@@ -18,9 +18,9 @@ export class EmpresaService {
   }
 
   verificarCorreo(token: string): Observable<VerificacionCorreoResponse> {
-    const url = buildApiPath(`/auth/verificar-correo?token=${encodeURIComponent(token)}`);
-
-    return this.http.get<VerificacionCorreoResponse>(url).pipe(
+    return this.http.get<VerificacionCorreoResponse>(buildApiPath('/auth/verificar-correo'), {
+      params: new HttpParams().set('token', token)
+    }).pipe(
       catchError((error: HttpErrorResponse) => {
         return throwError(() => new Error(this.extraerMensajeError(error)));
       })
@@ -28,9 +28,7 @@ export class EmpresaService {
   }
 
   reenviarVerificacion(correo: string): Observable<VerificacionCorreoResponse> {
-    const url = buildApiPath(`/auth/reenviar-verificacion?correo=${encodeURIComponent(correo)}`);
-
-    return this.http.post<VerificacionCorreoResponse>(url, null).pipe(
+    return this.http.post<VerificacionCorreoResponse>(buildApiPath('/auth/reenviar-verificacion'), { correo }).pipe(
       catchError((error: HttpErrorResponse) => {
         return throwError(() => new Error(this.extraerMensajeError(error)));
       })

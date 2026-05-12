@@ -89,6 +89,13 @@ export interface HistorialProcesoApi {
   empleado?: { id: number; nombre?: string } | null;
 }
 
+export interface HistorialProcesoResumenApi {
+  idProceso: number;
+  totalCambios: number;
+  limiteAplicado: number;
+  hayMas: boolean;
+}
+
 export interface NodoResponse {
   id: number;
   idProceso: number;

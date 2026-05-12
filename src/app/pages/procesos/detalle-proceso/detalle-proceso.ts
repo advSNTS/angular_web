@@ -141,19 +141,31 @@ export class DetalleProcesoComponent implements OnInit {
 
     this.marcarCarga('inicio', `cargando detalle rapido del proceso ${id}`);
 
-    this.procesoService
-      .obtenerDetalle(id)
-      .pipe(finalize(() => (this.cargando = false)))
+    this.solicitarCarga(
+        'proceso',
+        () => this.procesoService.obtenerPorId(id)
+      )
+      .pipe(
+        finalize(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        })
+      )
       .subscribe({
         next: (proceso) => {
           this.proceso = proceso;
           this.marcarCarga('proceso', 'detalle rapido cargado');
+
           this.cargarFlujo(id, proceso.poolId ?? null);
         },
         error: (error) => {
           this.marcarCarga('error', 'fallo la carga del detalle rapido');
+
           console.error('[DetalleProceso] proceso error', error);
+
           this.notify.error('No se pudo cargar el proceso.');
+
+          this.cdr.detectChanges();
         }
       });
   }

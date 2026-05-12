@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -24,6 +24,7 @@ export class ListaProcesosComponent implements OnInit {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly notify = inject(NotificationService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   procesos: ProcesoResponse[] = [];
   procesosFiltrados: ProcesoResponse[] = [];
@@ -68,17 +69,22 @@ export class ListaProcesosComponent implements OnInit {
           this.poolService.setPoolActivoId(activo);
           return activo != null ? this.procesoService.obtenerPorPool(activo) : this.procesoService.obtenerTodos();
         }),
-        finalize(() => (this.cargando = false))
+        finalize(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        })
       )
       .subscribe({
         next: (data) => {
           this.procesos = data;
           this.filtrar();
+          this.cdr.detectChanges();
         },
         error: (err: Error) => {
           this.procesos = [];
           this.procesosFiltrados = [];
-          this.error = err.message || 'Error al cargar los procesos. Verifica el backend o el inicio de sesiÃ³n.';
+          this.error = err.message || 'Error al cargar los procesos.';
+          this.cdr.detectChanges();
         }
       });
   }
@@ -94,16 +100,21 @@ export class ListaProcesosComponent implements OnInit {
     this.error = '';
     this.procesoService
       .obtenerPorPool(this.poolActivoId)
-      .pipe(finalize(() => (this.cargando = false)))
+      .pipe(finalize(() => {
+        this.cargando = false;
+        this.cdr.detectChanges();
+      }))
       .subscribe({
         next: (data) => {
           this.procesos = data;
           this.filtrar();
+          this.cdr.detectChanges();
         },
         error: (err: Error) => {
           this.procesos = [];
           this.procesosFiltrados = [];
           this.error = err.message || 'Error al cargar los procesos.';
+          this.cdr.detectChanges();
         }
       });
   }

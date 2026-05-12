@@ -21,6 +21,7 @@
             "tsConfig": "tsconfig.app.json",
             "baseHref": "/front/",
             "deployUrl": "/front/",
+            "polyfills": ["zone.js"],
             "assets": [
               {
                 "glob": "**/*",

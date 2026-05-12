@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -55,6 +55,7 @@ export class DetalleProcesoComponent implements OnInit {
   private readonly msgCatch = inject(MensajeCatchService);
   private readonly tareaInt = inject(TareaIntegracionService);
   private readonly msgExt = inject(MensajeExternoService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   proceso: ProcesoResponse | null = null;
   actividades: ActividadResponse[] = [];
@@ -87,13 +88,7 @@ export class DetalleProcesoComponent implements OnInit {
   cargando = true;
   pasoCarga = 'Inicializando...';
   trazasCarga: string[] = [];
-  tabActiva:
-    | 'flujo'
-    | 'diagrama'
-    | 'historial'
-    | 'compartir'
-    | 'mensajes' = 'flujo';
-
+  tabActiva: 'flujo' | 'diagrama' | 'historial' | 'compartir' | 'mensajes' = 'flujo';
   procesoId = 0;
 
   ngOnInit(): void {
@@ -141,7 +136,10 @@ export class DetalleProcesoComponent implements OnInit {
             map((lanes) => ({ res, lanes }))
           );
         }),
-        finalize(() => (this.cargando = false))
+        finalize(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        })
       )
       .subscribe({
         next: ({ res, lanes }) => {
@@ -152,6 +150,7 @@ export class DetalleProcesoComponent implements OnInit {
           this.arcos = res.arcos;
           this.lanes = lanes;
           this.marcarCarga('completo', 'detalle cargado correctamente');
+          this.cdr.detectChanges();
           this.cargarHistorial(id);
           this.cargarMensajes(id);
           if (this.puedeCompartir) {
@@ -161,14 +160,13 @@ export class DetalleProcesoComponent implements OnInit {
         error: () => {
           this.marcarCarga('error', 'fallo la carga del detalle');
           this.notify.error('No se pudo cargar el proceso.');
+          this.cdr.detectChanges();
         }
       });
   }
 
   private cargarHistorial(id: number): void {
-    if (this.historialCargando || this.historialCargado) {
-      return;
-    }
+    if (this.historialCargando || this.historialCargado) return;
     this.historialCargando = true;
     this.marcarCarga('historial', 'cargando historial');
     this.procesoService
@@ -180,45 +178,50 @@ export class DetalleProcesoComponent implements OnInit {
           console.error('[DetalleProceso] historial error', error);
           return of([] as HistorialProcesoApi[]);
         }),
-        finalize(() => (this.historialCargando = false))
+        finalize(() => {
+          this.historialCargando = false;
+          this.cdr.detectChanges();
+        })
       )
       .subscribe((historial) => {
         this.historial = historial;
         this.historialCargado = true;
         this.marcarCarga('historial', 'historial cargado');
+        this.cdr.detectChanges();
       });
   }
 
   private cargarCompartidos(id: number): void {
-    if (this.compartidosCargando || this.compartidosCargados) {
-      return;
-    }
+    if (this.compartidosCargando || this.compartidosCargados) return;
     this.compartidosCargando = true;
     this.marcarCarga('compartir', 'cargando pools y comparticiones');
     forkJoin({
       pools: this.solicitarCarga('pools', () => this.poolService.listar(), [] as PoolResponse[]),
       compartidos: this.solicitarCarga('compartidos', () => this.procesoService.listarCompartidos(id), [] as ProcesoCompartidoResponse[])
     })
-      .pipe(finalize(() => (this.compartidosCargando = false)))
+      .pipe(finalize(() => {
+        this.compartidosCargando = false;
+        this.cdr.detectChanges();
+      }))
       .subscribe({
         next: ({ pools, compartidos }) => {
           this.poolsDestino = pools;
           this.compartidos = compartidos;
           this.compartidosCargados = true;
           this.marcarCarga('compartir', 'datos de compartir cargados');
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('[DetalleProceso] compartir error', error);
           this.compartidosCargados = true;
           this.marcarCarga('compartir', 'error al cargar compartir');
+          this.cdr.detectChanges();
         }
       });
   }
 
   private cargarMensajes(id: number): void {
-    if (this.mensajesCargando || this.mensajesCargados) {
-      return;
-    }
+    if (this.mensajesCargando || this.mensajesCargados) return;
     this.mensajesCargando = true;
     this.marcarCarga('mensajes', 'cargando mensajes y tareas');
     forkJoin({
@@ -227,7 +230,10 @@ export class DetalleProcesoComponent implements OnInit {
       tareas: this.solicitarCarga('tareas integracion', () => this.tareaInt.listarPorProceso(id), [] as TareaIntegracionResponse[]),
       externos: this.solicitarCarga('mensajes externos', () => this.msgExt.listar(), [] as MensajeExternoResponse[])
     })
-      .pipe(finalize(() => (this.mensajesCargando = false)))
+      .pipe(finalize(() => {
+        this.mensajesCargando = false;
+        this.cdr.detectChanges();
+      }))
       .subscribe({
         next: ({ throws, catches, tareas, externos }) => {
           this.throws = throws;
@@ -236,11 +242,13 @@ export class DetalleProcesoComponent implements OnInit {
           this.externos = externos;
           this.mensajesCargados = true;
           this.marcarCarga('mensajes', 'mensajes cargados');
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('[DetalleProceso] mensajes error', error);
           this.mensajesCargados = true;
           this.marcarCarga('mensajes', 'error al cargar mensajes');
+          this.cdr.detectChanges();
         }
       });
   }
@@ -273,13 +281,8 @@ export class DetalleProcesoComponent implements OnInit {
     console.debug('[DetalleProceso]', marca);
   }
 
-  getEstado(proceso: ProcesoResponse): string {
-    return labelEstado(proceso);
-  }
-
-  getClaseEstado(proceso: ProcesoResponse): string {
-    return claseEstado(proceso);
-  }
+  getEstado(proceso: ProcesoResponse): string { return labelEstado(proceso); }
+  getClaseEstado(proceso: ProcesoResponse): string { return claseEstado(proceso); }
 
   estadoActividad(act: ActividadResponse): string {
     const lane = this.lanes.find((l) => l.id === act.laneId);
@@ -294,14 +297,8 @@ export class DetalleProcesoComponent implements OnInit {
 
   parsearJson(val: string | Record<string, unknown> | null): string {
     if (val == null) return '—';
-    if (typeof val === 'object') {
-      return JSON.stringify(val, null, 2);
-    }
-    try {
-      return JSON.stringify(JSON.parse(val), null, 2);
-    } catch {
-      return val;
-    }
+    if (typeof val === 'object') return JSON.stringify(val, null, 2);
+    try { return JSON.stringify(JSON.parse(val), null, 2); } catch { return val; }
   }
 
   fechaHistorial(h: HistorialProcesoApi): string {
@@ -310,64 +307,42 @@ export class DetalleProcesoComponent implements OnInit {
     return JSON.stringify(raw);
   }
 
-  irAEditor(): void {
-    void this.router.navigate(['/procesos', this.proceso?.id, 'editar']);
-  }
-
-  volver(): void {
-    void this.router.navigate(['/procesos']);
-  }
+  irAEditor(): void { void this.router.navigate(['/procesos', this.proceso?.id, 'editar']); }
+  volver(): void { void this.router.navigate(['/procesos']); }
 
   compartir(): void {
-    if (!this.proceso || this.sharePoolId == null) {
-      this.notify.info('Seleccione un pool destino.');
-      return;
-    }
+    if (!this.proceso || this.sharePoolId == null) { this.notify.info('Seleccione un pool destino.'); return; }
     this.compartiendo = true;
-    this.procesoService
-      .compartir(this.proceso.id, { poolId: this.sharePoolId, permiso: this.sharePermiso })
+    this.procesoService.compartir(this.proceso.id, { poolId: this.sharePoolId, permiso: this.sharePermiso })
       .subscribe({
         next: () => {
           this.notify.exito('Proceso compartido.');
           this.compartiendo = false;
-          this.procesoService.listarCompartidos(this.proceso!.id).subscribe((c) => (this.compartidos = c));
+          this.procesoService.listarCompartidos(this.proceso!.id).subscribe((c) => {
+            this.compartidos = c;
+            this.cdr.detectChanges();
+          });
         },
-        error: () => {
-          this.notify.error('No se pudo compartir (¿permisos de administrador?).');
-          this.compartiendo = false;
-        }
+        error: () => { this.notify.error('No se pudo compartir.'); this.compartiendo = false; }
       });
   }
 
   seleccionarTab(tab: 'flujo' | 'diagrama' | 'historial' | 'compartir' | 'mensajes'): void {
     this.tabActiva = tab;
-    if (!this.proceso) {
-      return;
-    }
-    if (tab === 'compartir') {
-      this.cargarCompartidos(this.proceso.id);
-    }
-    if (tab === 'historial') {
-      this.cargarHistorial(this.proceso.id);
-    }
-    if (tab === 'mensajes') {
-      this.cargarMensajes(this.proceso.id);
-    }
+    if (!this.proceso) return;
+    if (tab === 'compartir') this.cargarCompartidos(this.proceso.id);
+    if (tab === 'historial') this.cargarHistorial(this.proceso.id);
+    if (tab === 'mensajes') this.cargarMensajes(this.proceso.id);
   }
 
   crearThrow(): void {
     if (!this.proceso || !this.nuevoThrow.nombreMensaje.trim()) return;
-    this.msgThrow
-      .crear({
-        procesoId: this.proceso.id,
-        nombreMensaje: this.nuevoThrow.nombreMensaje.trim(),
-        payloadTemplate: this.nuevoThrow.payloadTemplate.trim() || null
-      })
+    this.msgThrow.crear({ procesoId: this.proceso.id, nombreMensaje: this.nuevoThrow.nombreMensaje.trim(), payloadTemplate: this.nuevoThrow.payloadTemplate.trim() || null })
       .subscribe({
         next: () => {
           this.notify.exito('Mensaje throw registrado.');
           this.nuevoThrow = { nombreMensaje: '', payloadTemplate: '' };
-          this.msgThrow.listarPorProceso(this.proceso!.id).subscribe((t) => (this.throws = t));
+          this.msgThrow.listarPorProceso(this.proceso!.id).subscribe((t) => { this.throws = t; this.cdr.detectChanges(); });
         },
         error: () => this.notify.error('No se pudo crear el mensaje.')
       });
@@ -375,18 +350,12 @@ export class DetalleProcesoComponent implements OnInit {
 
   crearCatch(): void {
     if (!this.proceso || !this.nuevoCatch.nombreMensaje.trim()) return;
-    this.msgCatch
-      .crear({
-        procesoId: this.proceso.id,
-        nombreMensaje: this.nuevoCatch.nombreMensaje.trim(),
-        correlacionExpr: this.nuevoCatch.correlacionExpr.trim() || null,
-        iniciarNuevaInstancia: this.nuevoCatch.iniciarNuevaInstancia
-      })
+    this.msgCatch.crear({ procesoId: this.proceso.id, nombreMensaje: this.nuevoCatch.nombreMensaje.trim(), correlacionExpr: this.nuevoCatch.correlacionExpr.trim() || null, iniciarNuevaInstancia: this.nuevoCatch.iniciarNuevaInstancia })
       .subscribe({
         next: () => {
           this.notify.exito('Mensaje catch registrado.');
           this.nuevoCatch = { nombreMensaje: '', correlacionExpr: '', iniciarNuevaInstancia: false };
-          this.msgCatch.listarPorProceso(this.proceso!.id).subscribe((t) => (this.catches = t));
+          this.msgCatch.listarPorProceso(this.proceso!.id).subscribe((t) => { this.catches = t; this.cdr.detectChanges(); });
         },
         error: () => this.notify.error('No se pudo crear el mensaje.')
       });
@@ -394,54 +363,35 @@ export class DetalleProcesoComponent implements OnInit {
 
   crearTareaIntegracion(): void {
     if (!this.proceso) return;
-    this.tareaInt
-      .crear({
-        procesoId: this.proceso.id,
-        mensajeExternoId: this.nuevaTarea.mensajeExternoId ?? undefined,
-        payloadMapping: this.nuevaTarea.payloadMapping.trim() || undefined
-      })
+    this.tareaInt.crear({ procesoId: this.proceso.id, mensajeExternoId: this.nuevaTarea.mensajeExternoId ?? undefined, payloadMapping: this.nuevaTarea.payloadMapping.trim() || undefined })
       .subscribe({
         next: () => {
           this.notify.exito('Tarea de integración creada.');
           this.nuevaTarea = { mensajeExternoId: null, payloadMapping: '' };
-          this.tareaInt.listarPorProceso(this.proceso!.id).subscribe((t) => (this.tareas = t));
+          this.tareaInt.listarPorProceso(this.proceso!.id).subscribe((t) => { this.tareas = t; this.cdr.detectChanges(); });
         },
         error: () => this.notify.error('No se pudo crear la tarea.')
       });
   }
 
-  /** Orden visual simple: nodos en cadena según primer arco disponible */
   ordenDiagrama(): number[] {
     const ids = new Set<number>();
     this.actividades.forEach((a) => ids.add(a.nodoId));
     this.gateways.forEach((g) => ids.add(g.nodoId));
     const orden: number[] = [];
     const visited = new Set<number>();
-
     const incoming = new Map<number, number>();
     this.arcos.forEach((ar) => incoming.set(ar.nodoDestinoId, ar.nodoOrigenId));
-
     let start: number | undefined;
-    for (const id of ids) {
-      if (!incoming.has(id)) {
-        start = id;
-        break;
-      }
-    }
-    if (start === undefined && ids.size) {
-      start = [...ids][0];
-    }
-
+    for (const id of ids) { if (!incoming.has(id)) { start = id; break; } }
+    if (start === undefined && ids.size) start = [...ids][0];
     let cur = start;
     while (cur !== undefined && !visited.has(cur)) {
-      visited.add(cur);
-      orden.push(cur);
+      visited.add(cur); orden.push(cur);
       const nextArc = this.arcos.find((a) => a.nodoOrigenId === cur);
       cur = nextArc?.nodoDestinoId;
     }
-    for (const id of ids) {
-      if (!visited.has(id)) orden.push(id);
-    }
+    for (const id of ids) { if (!visited.has(id)) orden.push(id); }
     return orden;
   }
 

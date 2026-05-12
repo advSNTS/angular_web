@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { buildApiPath } from '../core/api-url';
 import {
   HistorialProcesoApi,
+  HistorialProcesoResumenApi,
   ProcesoCompartidoRequest,
   ProcesoCompartidoResponse,
   ProcesoRequest,
@@ -37,6 +38,12 @@ export class ProcesoService {
     });
   }
 
+  obtenerDetalle(id: number): Observable<ProcesoResponse> {
+    return this.http.get<ProcesoResponse>(`${this.baseUrl}/${id}/detalle`, {
+      params: this.nitParams()
+    });
+  }
+
   obtenerPorCategoria(categoria: string): Observable<ProcesoResponse[]> {
     return this.http.get<ProcesoResponse[]>(`${this.baseUrl}/categoria/${encodeURIComponent(categoria)}`, {
       params: this.nitParams()
@@ -65,9 +72,15 @@ export class ProcesoService {
     return this.http.delete<void>(`${this.baseUrl}/${id}`, { params });
   }
 
-  obtenerHistorial(id: number): Observable<HistorialProcesoApi[]> {
+  obtenerHistorial(id: number, limite = 50): Observable<HistorialProcesoApi[]> {
     return this.http.get<HistorialProcesoApi[]>(`${this.baseUrl}/${id}/historial`, {
-      params: this.nitParams()
+      params: this.nitParams().set('limite', String(limite))
+    });
+  }
+
+  obtenerResumenHistorial(id: number, limite = 50): Observable<HistorialProcesoResumenApi> {
+    return this.http.get<HistorialProcesoResumenApi>(`${this.baseUrl}/${id}/historial/resumen`, {
+      params: this.nitParams().set('limite', String(limite))
     });
   }
 

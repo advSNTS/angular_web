@@ -33,6 +33,8 @@
     </div>
 
     <div *ngIf="tabActiva === 'flujo'" class="tab-contenido">
+      <div *ngIf="flujoCargando" class="vacio">Cargando flujo del proceso...</div>
+
       <section class="seccion">
         <h2>Carriles (lanes)</h2>
         <ng-container *ngIf="lanes.length; else sinLanesVisibles">
@@ -104,6 +106,9 @@
     <div *ngIf="tabActiva === 'historial'" class="tab-contenido">
       <section class="seccion">
         <h2>Historial de cambios</h2>
+        <p *ngIf="historialResumen" class="muted-p">
+          Mostrando {{ historial.length }} de {{ historialResumen.totalCambios }} cambios registrados.
+        </p>
         <div *ngIf="historialCargando" class="vacio">Cargando historial...</div>
         <div *ngIf="!historialCargando && historial.length === 0" class="vacio">Sin historial registrado</div>
 
@@ -125,6 +130,14 @@
             </div>
           </div>
         </div>
+
+        <button
+          *ngIf="!historialCargando && historialResumen?.hayMas"
+          type="button"
+          class="btn-editar"
+          (click)="cargarMasHistorial()">
+          Cargar mas historial
+        </button>
       </section>
     </div>
 

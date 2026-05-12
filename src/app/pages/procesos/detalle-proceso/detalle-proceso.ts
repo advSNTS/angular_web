@@ -7,6 +7,7 @@ import { claseEstado, labelEstado } from '../../../core/proceso-estado.util';
 import { esAdministradorEmpresa, puedeEditarProcesos } from '../../../core/roles.util';
 import {
   HistorialProcesoApi,
+  HistorialProcesoResumenApi,
   LaneResponse,
   MensajeCatchResponse,
   MensajeExternoResponse,
@@ -63,8 +64,14 @@ export class DetalleProcesoComponent implements OnInit {
   arcos: ArcoResponse[] = [];
   lanes: LaneResponse[] = [];
   historial: HistorialProcesoApi[] = [];
+  historialResumen: HistorialProcesoResumenApi | null = null;
   historialCargando = false;
   historialCargado = false;
+  historialLimite = 50;
+  private readonly historialIncremento = 50;
+
+  flujoCargando = false;
+  flujoCargado = false;
 
   compartidos: ProcesoCompartidoResponse[] = [];
   poolsDestino: PoolResponse[] = [];
@@ -106,26 +113,73 @@ export class DetalleProcesoComponent implements OnInit {
   }
 
   cargarDatos(id: number): void {
+    if (!id || Number.isNaN(id)) {
+      this.cargando = false;
+      this.marcarCarga('error', 'id de proceso invalido');
+      this.notify.error('No se encontro el proceso solicitado.');
+      return;
+    }
+
     this.cargando = true;
-    this.pasoCarga = 'Preparando solicitudes...';
+    this.pasoCarga = 'Cargando detalle del proceso...';
     this.trazasCarga = [];
-    this.marcarCarga('inicio', `cargando proceso ${id}`);
-    defer(() =>
-      forkJoin({
-        proceso: this.solicitarCarga('proceso', () => this.procesoService.obtenerPorId(id)),
-        actividades: this.solicitarCarga('actividades', () => this.actividadService.obtenerPorProceso(id), [] as ActividadResponse[]),
-        gateways: this.solicitarCarga('gateways', () => this.gatewayService.obtenerPorProceso(id), [] as GatewayResponse[]),
-        arcos: this.solicitarCarga('arcos', () => this.arcoService.obtenerPorProceso(id), [] as ArcoResponse[])
-      })
-    )
+    this.proceso = null;
+    this.actividades = [];
+    this.gateways = [];
+    this.arcos = [];
+    this.lanes = [];
+    this.historial = [];
+    this.historialResumen = null;
+    this.historialCargado = false;
+    this.historialCargando = false;
+    this.flujoCargado = false;
+    this.flujoCargando = false;
+    this.mensajesCargados = false;
+    this.mensajesCargando = false;
+    this.compartidosCargados = false;
+    this.compartidosCargando = false;
+
+    this.marcarCarga('inicio', `cargando detalle rapido del proceso ${id}`);
+
+    this.procesoService
+      .obtenerDetalle(id)
+      .pipe(finalize(() => (this.cargando = false)))
+      .subscribe({
+        next: (proceso) => {
+          this.proceso = proceso;
+          this.marcarCarga('proceso', 'detalle rapido cargado');
+          this.cargarFlujo(id, proceso.poolId ?? null);
+        },
+        error: (error) => {
+          this.marcarCarga('error', 'fallo la carga del detalle rapido');
+          console.error('[DetalleProceso] proceso error', error);
+          this.notify.error('No se pudo cargar el proceso.');
+        }
+      });
+  }
+
+  private cargarFlujo(id: number, poolId: number | null): void {
+    if (this.flujoCargando || this.flujoCargado) {
+      return;
+    }
+
+    this.flujoCargando = true;
+    this.marcarCarga('flujo', 'cargando actividades, gateways y arcos');
+
+    forkJoin({
+      actividades: this.solicitarCarga('actividades', () => this.actividadService.obtenerPorProceso(id), [] as ActividadResponse[]),
+      gateways: this.solicitarCarga('gateways', () => this.gatewayService.obtenerPorProceso(id), [] as GatewayResponse[]),
+      arcos: this.solicitarCarga('arcos', () => this.arcoService.obtenerPorProceso(id), [] as ArcoResponse[])
+    })
       .pipe(
         switchMap((res) => {
-          const poolId = res.proceso.poolId;
           if (!poolId) {
             this.marcarCarga('lanes', 'sin pool, omitiendo lanes');
             return of({ res, lanes: [] as LaneResponse[] });
           }
+
           this.marcarCarga('lanes', `cargando lanes del pool ${poolId}`);
+
           return this.laneService.listarPorPool(poolId).pipe(
             timeout({ first: 10000 }),
             catchError((error) => {
@@ -143,52 +197,67 @@ export class DetalleProcesoComponent implements OnInit {
       )
       .subscribe({
         next: ({ res, lanes }) => {
-          this.marcarCarga('render', 'datos recibidos, renderizando vista');
-          this.proceso = res.proceso;
           this.actividades = res.actividades;
           this.gateways = res.gateways;
           this.arcos = res.arcos;
           this.lanes = lanes;
-          this.marcarCarga('completo', 'detalle cargado correctamente');
-          this.cdr.detectChanges();
-          this.cargarHistorial(id);
-          this.cargarMensajes(id);
-          if (this.puedeCompartir) {
-            this.cargarCompartidos(id);
-          }
+          this.flujoCargado = true;
+          this.marcarCarga('flujo', 'flujo cargado correctamente');
         },
-        error: () => {
-          this.marcarCarga('error', 'fallo la carga del detalle');
-          this.notify.error('No se pudo cargar el proceso.');
-          this.cdr.detectChanges();
+        error: (error) => {
+          console.error('[DetalleProceso] flujo error', error);
+          this.flujoCargado = true;
+          this.marcarCarga('flujo', 'error al cargar flujo');
         }
       });
   }
 
-  private cargarHistorial(id: number): void {
-    if (this.historialCargando || this.historialCargado) return;
+  private cargarHistorial(id: number, forzar = false): void {
+    if ((this.historialCargando || this.historialCargado) && !forzar) {
+      return;
+    }
+
     this.historialCargando = true;
-    this.marcarCarga('historial', 'cargando historial');
-    this.procesoService
-      .obtenerHistorial(id)
+    this.marcarCarga('historial', `cargando historial, limite ${this.historialLimite}`);
+
+    forkJoin({
+      historial: this.procesoService.obtenerHistorial(id, this.historialLimite),
+      resumen: this.procesoService.obtenerResumenHistorial(id, this.historialLimite).pipe(
+        catchError((error) => {
+          console.error('[DetalleProceso] resumen historial error', error);
+          return of(null as HistorialProcesoResumenApi | null);
+        })
+      )
+    })
       .pipe(
         timeout({ first: 10000 }),
         catchError((error) => {
           this.marcarCarga('historial', 'error al cargar historial');
           console.error('[DetalleProceso] historial error', error);
-          return of([] as HistorialProcesoApi[]);
+          return of({ historial: [] as HistorialProcesoApi[], resumen: null as HistorialProcesoResumenApi | null });
         }),
         finalize(() => {
           this.historialCargando = false;
           this.cdr.detectChanges();
         })
       )
-      .subscribe((historial) => {
+      .subscribe(({ historial, resumen }) => {
         this.historial = historial;
+        this.historialResumen = resumen;
         this.historialCargado = true;
         this.marcarCarga('historial', 'historial cargado');
         this.cdr.detectChanges();
       });
+  }
+
+  cargarMasHistorial(): void {
+    if (!this.proceso) {
+      return;
+    }
+
+    this.historialLimite += this.historialIncremento;
+    this.historialCargado = false;
+    this.cargarHistorial(this.proceso.id, true);
   }
 
   private cargarCompartidos(id: number): void {

@@ -1,0 +1,58 @@
+<div class="canvas-shell">
+  <div class="canvas-toolbar" *ngIf="editable">
+    <div>
+      <p class="canvas-kicker">Canvas editable</p>
+      <p class="canvas-hint">Arrastra los nodos y pulsa Guardar para persistir sus coordenadas.</p>
+    </div>
+    <span class="canvas-count">{{ nodes.length }} nodos</span>
+  </div>
+
+  <div class="canvas-viewport">
+    <div #board class="canvas-board" [style.width.px]="canvasWidth" [style.height.px]="canvasHeight">
+      <svg class="canvas-svg" [attr.viewBox]="'0 0 ' + canvasWidth + ' ' + canvasHeight">
+        <defs>
+          <marker
+            id="arrow-head"
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z"></path>
+          </marker>
+        </defs>
+
+        <g *ngFor="let arc of arcos; trackBy: trackByArcId">
+          <path *ngIf="buildArcPath(arc) as path" class="canvas-arc" [attr.d]="path"></path>
+        </g>
+      </svg>
+
+      <ng-container *ngIf="nodes.length; else emptyState">
+        <button
+          *ngFor="let node of nodes; trackBy: trackByNodeId"
+          type="button"
+          class="canvas-node"
+          [class.activity]="node.tipo === 'ACTIVIDAD'"
+          [class.gateway]="node.tipo === 'GATEWAY'"
+          [class.dragging]="draggingNodeId === node.id"
+          [style.left.px]="node.x"
+          [style.top.px]="node.y"
+          [style.width.px]="node.width"
+          [style.height.px]="node.height"
+          [attr.aria-disabled]="!editable"
+          (pointerdown)="onNodePointerDown(node, $event)"
+        >
+          <span class="node-kicker">{{ node.tipo }}</span>
+          <span class="node-title">{{ node.nombre }}</span>
+          <span class="node-subtitle" *ngIf="node.subtitulo">{{ node.subtitulo }}</span>
+        </button>
+      </ng-container>
+
+      <ng-template #emptyState>
+        <div class="canvas-empty">No hay nodos para mostrar en este proceso.</div>
+      </ng-template>
+    </div>
+  </div>
+</div>

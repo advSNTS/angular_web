@@ -208,6 +208,40 @@ h2 { margin: 0 0 1rem; font-size: 1.1rem; color: #93c5fd; display: flex; align-i
 }
 .diagram-arrow { color: #38bdf8; font-weight: 800; }
 
+.diagram-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.diagram-section-header h2 {
+  margin-bottom: 0.35rem;
+}
+
+.btn-diagrama-guardar {
+  border: 0;
+  border-radius: 0.9rem;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #03111f;
+  background: linear-gradient(135deg, #38bdf8, #22c55e);
+  white-space: nowrap;
+}
+
+.btn-diagrama-guardar:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.diagram-footer {
+  margin: 0.85rem 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
 .share-form { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; margin-bottom: 1.5rem; }
 .share-form label { display: grid; gap: 0.35rem; font-size: 0.88rem; color: #cbd5e1; }
 .share-form select { min-width: 200px; padding: 0.5rem; border-radius: 0.5rem; background: #0f172a; color: #f8fafc; border: 1px solid rgba(148, 163, 184, 0.25); }
@@ -225,4 +259,5 @@ h2 { margin: 0 0 1rem; font-size: 1.1rem; color: #93c5fd; display: flex; align-i
   .detalle-shell { padding: 1rem; }
   .encabezado { flex-direction: column; }
   .historial-valores { grid-template-columns: 1fr; }
+  .diagram-section-header { flex-direction: column; }
 }

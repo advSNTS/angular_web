@@ -2,7 +2,22 @@ import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { catchError, defer, forkJoin, map, of, finalize, Observable, switchMap, timeout, tap, throwError } from 'rxjs';
+import {
+  catchError,
+  concatMap,
+  defer,
+  forkJoin,
+  from,
+  finalize,
+  map,
+  Observable,
+  of,
+  switchMap,
+  timeout,
+  tap,
+  throwError,
+  toArray
+} from 'rxjs';
 import { claseEstado, labelEstado } from '../../../core/proceso-estado.util';
 import { esAdministradorEmpresa, puedeEditarProcesos } from '../../../core/roles.util';
 import {
@@ -19,7 +34,9 @@ import {
   TareaIntegracionResponse,
   ActividadResponse,
   GatewayResponse,
-  ArcoResponse
+  ArcoResponse,
+  NodoRequest,
+  NodoResponse
 } from '../../../models/proceso';
 import { ActividadService } from '../../../services/actividad.service';
 import { ArcoService } from '../../../services/arco.service';
@@ -30,14 +47,17 @@ import { MensajeCatchService } from '../../../services/mensaje-catch.service';
 import { MensajeExternoService } from '../../../services/mensaje-externo.service';
 import { MensajeThrowService } from '../../../services/mensaje-throw.service';
 import { NotificationService } from '../../../services/notification.service';
+import { NodoService } from '../../../services/nodo.service';
 import { PoolService } from '../../../services/pool.service';
 import { ProcesoService } from '../../../services/proceso.service';
 import { TareaIntegracionService } from '../../../services/tarea-integracion.service';
+import { ProcesoDiagramaCanvasComponent } from './proceso-diagrama-canvas.component';
+import { DiagramaNodoCanvas, DiagramaNodoMovimiento } from './detalle-proceso-diagrama.types';
 
 @Component({
   selector: 'app-detalle-proceso',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, ProcesoDiagramaCanvasComponent],
   templateUrl: './detalle-proceso.html',
   styleUrl: './detalle-proceso.css'
 })
@@ -56,12 +76,15 @@ export class DetalleProcesoComponent implements OnInit {
   private readonly msgCatch = inject(MensajeCatchService);
   private readonly tareaInt = inject(TareaIntegracionService);
   private readonly msgExt = inject(MensajeExternoService);
+  private readonly nodoService = inject(NodoService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   proceso: ProcesoResponse | null = null;
   actividades: ActividadResponse[] = [];
   gateways: GatewayResponse[] = [];
   arcos: ArcoResponse[] = [];
+  nodos: NodoResponse[] = [];
+  diagramNodes: DiagramaNodoCanvas[] = [];
   lanes: LaneResponse[] = [];
   historial: HistorialProcesoApi[] = [];
   historialResumen: HistorialProcesoResumenApi | null = null;
@@ -91,6 +114,9 @@ export class DetalleProcesoComponent implements OnInit {
   nuevoThrow = { nombreMensaje: '', payloadTemplate: '' };
   nuevoCatch = { nombreMensaje: '', correlacionExpr: '', iniciarNuevaInstancia: false };
   nuevaTarea = { mensajeExternoId: null as number | null, payloadMapping: '' };
+  guardandoDiagrama = false;
+  private diagramOriginalPositions = new Map<number, { x: number | null; y: number | null }>();
+  private dirtyDiagramNodeIds = new Set<number>();
 
   cargando = true;
   pasoCarga = 'Inicializando...';
@@ -112,6 +138,14 @@ export class DetalleProcesoComponent implements OnInit {
     return esAdministradorEmpresa(this.auth.getSesionActual()?.rolesSistema);
   }
 
+  get tieneCambiosDiagrama(): boolean {
+    return this.dirtyDiagramNodeIds.size > 0;
+  }
+
+  get nodosPendientesDiagrama(): number {
+    return this.dirtyDiagramNodeIds.size;
+  }
+
   cargarDatos(id: number): void {
     if (!id || Number.isNaN(id)) {
       this.cargando = false;
@@ -127,6 +161,8 @@ export class DetalleProcesoComponent implements OnInit {
     this.actividades = [];
     this.gateways = [];
     this.arcos = [];
+    this.nodos = [];
+    this.diagramNodes = [];
     this.lanes = [];
     this.historial = [];
     this.historialResumen = null;
@@ -138,6 +174,9 @@ export class DetalleProcesoComponent implements OnInit {
     this.mensajesCargando = false;
     this.compartidosCargados = false;
     this.compartidosCargando = false;
+    this.guardandoDiagrama = false;
+    this.diagramOriginalPositions.clear();
+    this.dirtyDiagramNodeIds.clear();
 
     this.marcarCarga('inicio', `cargando detalle rapido del proceso ${id}`);
 
@@ -181,7 +220,8 @@ export class DetalleProcesoComponent implements OnInit {
     forkJoin({
       actividades: this.solicitarCarga('actividades', () => this.actividadService.obtenerPorProceso(id), [] as ActividadResponse[]),
       gateways: this.solicitarCarga('gateways', () => this.gatewayService.obtenerPorProceso(id), [] as GatewayResponse[]),
-      arcos: this.solicitarCarga('arcos', () => this.arcoService.obtenerPorProceso(id), [] as ArcoResponse[])
+      arcos: this.solicitarCarga('arcos', () => this.arcoService.obtenerPorProceso(id), [] as ArcoResponse[]),
+      nodos: this.solicitarCarga('nodos', () => this.nodoService.obtenerPorProceso(id), [] as NodoResponse[])
     })
       .pipe(
         switchMap((res) => {
@@ -212,7 +252,9 @@ export class DetalleProcesoComponent implements OnInit {
           this.actividades = res.actividades;
           this.gateways = res.gateways;
           this.arcos = res.arcos;
+          this.nodos = res.nodos;
           this.lanes = lanes;
+          this.construirDiagrama();
           this.flujoCargado = true;
           this.marcarCarga('flujo', 'flujo cargado correctamente');
         },
@@ -332,6 +374,194 @@ export class DetalleProcesoComponent implements OnInit {
           this.cdr.detectChanges();
         }
       });
+  }
+
+  private construirDiagrama(): void {
+    const actividadesPorNodo = new Map(this.actividades.map((a) => [a.nodoId, a]));
+    const gatewaysPorNodo = new Map(this.gateways.map((g) => [g.nodoId, g]));
+
+    const nodosOrdenados = [...this.nodos].sort((a, b) => a.id - b.id);
+    const diagramas: DiagramaNodoCanvas[] = [];
+    const originales = new Map<number, { x: number | null; y: number | null }>();
+    const dirtyInicial = new Set<number>();
+
+    let indiceFallback = 0;
+    for (const nodo of nodosOrdenados) {
+      const actividad = actividadesPorNodo.get(nodo.id);
+      const gateway = gatewaysPorNodo.get(nodo.id);
+      if (!actividad && !gateway) {
+        continue;
+      }
+
+      const esActividad = Boolean(actividad);
+      const width = esActividad ? 220 : 180;
+      const height = esActividad ? 96 : 124;
+      const fallback = this.calcularPosicionInicial(indiceFallback);
+      indiceFallback += 1;
+
+      const x = nodo.coordenadaX ?? fallback.x;
+      const y = nodo.coordenadaY ?? fallback.y;
+      const subtitulo = esActividad
+        ? this.estadoActividad(actividad!)
+        : gateway!.tipoGateway;
+
+      diagramas.push({
+        id: nodo.id,
+        idProceso: nodo.idProceso,
+        tipo: esActividad ? 'ACTIVIDAD' : 'GATEWAY',
+        nombre: actividad?.nombreNodo ?? gateway?.nombreNodo ?? nodo.nombre,
+        subtitulo,
+        x,
+        y,
+        width,
+        height
+      });
+
+      originales.set(nodo.id, {
+        x: nodo.coordenadaX ?? null,
+        y: nodo.coordenadaY ?? null
+      });
+
+      if (nodo.coordenadaX == null || nodo.coordenadaY == null) {
+        dirtyInicial.add(nodo.id);
+      }
+    }
+
+    this.diagramNodes = diagramas;
+    this.diagramOriginalPositions = originales;
+    this.dirtyDiagramNodeIds = dirtyInicial;
+  }
+
+  private calcularPosicionInicial(indice: number): { x: number; y: number } {
+    const paddingX = 56;
+    const paddingY = 48;
+    const gapX = 300;
+    const gapY = 180;
+    const col = indice % 3;
+    const row = Math.floor(indice / 3);
+    return {
+      x: paddingX + col * gapX,
+      y: paddingY + row * gapY
+    };
+  }
+
+  private obtenerLimitesDiagrama(): { width: number; height: number } {
+    const minWidth = 1120;
+    const minHeight = 720;
+    const padding = 160;
+    const width = Math.max(minWidth, ...this.diagramNodes.map((node) => node.x + node.width), minWidth) + padding;
+    const height = Math.max(minHeight, ...this.diagramNodes.map((node) => node.y + node.height), minHeight) + padding;
+    return { width, height };
+  }
+
+  onNodoDiagramaMovido(evento: DiagramaNodoMovimiento): void {
+    const original = this.diagramOriginalPositions.get(evento.id);
+    if (!original || original.x == null || original.y == null) {
+      this.dirtyDiagramNodeIds.add(evento.id);
+      return;
+    }
+
+    const coincide = original.x === evento.x && original.y === evento.y;
+    if (coincide) {
+      this.dirtyDiagramNodeIds.delete(evento.id);
+    } else {
+      this.dirtyDiagramNodeIds.add(evento.id);
+    }
+  }
+
+  guardarDiagrama(): void {
+    if (!this.proceso || !this.puedeEditar) {
+      return;
+    }
+
+    if (!this.dirtyDiagramNodeIds.size) {
+      this.notify.info('No hay cambios de posicion para guardar.');
+      return;
+    }
+
+    const nit = this.auth.getNitEmpresa();
+    if (!nit) {
+      this.notify.error('Sesion invalida.');
+      return;
+    }
+
+    this.guardandoDiagrama = true;
+    const pendientes = [...this.dirtyDiagramNodeIds];
+
+    from(pendientes)
+      .pipe(
+        concatMap((nodoId) => this.guardarNodoDiagrama(nodoId, nit)),
+        toArray(),
+        finalize(() => {
+          this.guardandoDiagrama = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.notify.exito('Posiciones guardadas correctamente.');
+          this.marcarCarga('diagrama', 'coordenadas persistidas');
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          console.error('[DetalleProceso] guardar diagrama error', error);
+          this.notify.error('No se pudieron guardar algunas posiciones.');
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  private guardarNodoDiagrama(nodoId: number, nit: string): Observable<NodoResponse> {
+    const nodo = this.diagramNodes.find((item) => item.id === nodoId);
+    if (!nodo) {
+      return throwError(() => new Error(`Nodo no encontrado: ${nodoId}`));
+    }
+
+    const dto: NodoRequest = this.normalizarNodoParaGuardado(nodo, nit);
+    return this.nodoService.actualizar(nodo.id, dto).pipe(
+      tap((actualizado) => {
+        this.aplicarNodoGuardado(actualizado);
+      })
+    );
+  }
+
+  private normalizarNodoParaGuardado(nodo: DiagramaNodoCanvas, nit: string): NodoRequest {
+    const limites = this.obtenerLimitesDiagrama();
+    const maxX = Math.max(limites.width - nodo.width, 0);
+    const maxY = Math.max(limites.height - nodo.height, 0);
+    const rawX = Number.isFinite(nodo.x) ? nodo.x : 0;
+    const rawY = Number.isFinite(nodo.y) ? nodo.y : 0;
+    const x = Math.max(0, Math.min(maxX, Math.round(rawX)));
+    const y = Math.max(0, Math.min(maxY, Math.round(rawY)));
+
+    return {
+      nitEmpresa: nit,
+      idProceso: nodo.idProceso,
+      tipo: nodo.tipo,
+      nombre: nodo.nombre,
+      coordenadaX: x,
+      coordenadaY: y
+    };
+  }
+
+  private aplicarNodoGuardado(respuesta: NodoResponse): void {
+    const nodo = this.diagramNodes.find((item) => item.id === respuesta.id);
+    if (nodo) {
+      nodo.x = respuesta.coordenadaX ?? nodo.x;
+      nodo.y = respuesta.coordenadaY ?? nodo.y;
+    }
+
+    const persistido = this.nodos.find((item) => item.id === respuesta.id);
+    if (persistido) {
+      persistido.coordenadaX = respuesta.coordenadaX ?? persistido.coordenadaX;
+      persistido.coordenadaY = respuesta.coordenadaY ?? persistido.coordenadaY;
+    }
+
+    this.diagramOriginalPositions.set(respuesta.id, {
+      x: respuesta.coordenadaX ?? null,
+      y: respuesta.coordenadaY ?? null
+    });
+    this.dirtyDiagramNodeIds.delete(respuesta.id);
   }
 
   private solicitarCarga<T>(etiqueta: string, factory: () => Observable<T>, fallback?: T): Observable<T> {

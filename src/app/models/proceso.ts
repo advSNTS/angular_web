@@ -111,8 +111,8 @@ export interface NodoRequest {
   idProceso: number;
   tipo: 'ACTIVIDAD' | 'GATEWAY' | 'ARCO';
   nombre: string;
-  coordenadaX?: number | null;
-  coordenadaY?: number | null;
+  coordenadaX: number;
+  coordenadaY: number;
 }
 
 export interface LaneResponse {

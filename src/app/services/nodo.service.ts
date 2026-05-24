@@ -12,7 +12,8 @@ export class NodoService {
   private readonly baseUrl = buildApiPath('/nodos');
 
   crear(dto: NodoRequest): Observable<NodoResponse> {
-    return this.http.post<NodoResponse>(this.baseUrl, dto);
+    const nit = this.requireNit();
+    return this.http.post<NodoResponse>(this.baseUrl, { ...dto, nitEmpresa: dto.nitEmpresa ?? nit });
   }
 
   obtenerPorProceso(idProceso: number): Observable<NodoResponse[]> {
@@ -22,7 +23,8 @@ export class NodoService {
   }
 
   actualizar(id: number, dto: NodoRequest): Observable<NodoResponse> {
-    return this.http.put<NodoResponse>(`${this.baseUrl}/${id}`, dto);
+    const nit = this.requireNit();
+    return this.http.put<NodoResponse>(`${this.baseUrl}/${id}`, { ...dto, nitEmpresa: dto.nitEmpresa ?? nit });
   }
 
   eliminar(id: number): Observable<void> {

@@ -33,8 +33,6 @@
     </div>
 
     <div *ngIf="tabActiva === 'flujo'" class="tab-contenido">
-      <div *ngIf="flujoCargando" class="vacio">Cargando flujo del proceso...</div>
-
       <section class="seccion">
         <h2>Carriles (lanes)</h2>
         <ng-container *ngIf="lanes.length; else sinLanesVisibles">
@@ -90,16 +88,33 @@
 
     <div *ngIf="tabActiva === 'diagrama'" class="tab-contenido">
       <section class="seccion">
-        <h2>Vista simplificada del flujo</h2>
-        <p class="muted-p">Secuencia según arcos (lectura izquierda → derecha). Los carriles se indican en fichas de actividad.</p>
-        <div class="diagram-row">
-          <ng-container *ngFor="let nid of ordenDiagrama(); let last = last">
-            <div class="diagram-node" [class.gw]="tipoNodoDiagrama(nid) === 'gw'">
-              {{ labelNodoDiagrama(nid) }}
-            </div>
-            <span *ngIf="!last" class="diagram-arrow">→</span>
-          </ng-container>
+        <div class="diagram-section-header">
+          <div>
+            <h2>Canvas de proceso</h2>
+            <p class="muted-p">Arrastra los nodos para ajustar el layout visual. Las conexiones se recalculan en tiempo real.</p>
+          </div>
+          <button
+            *ngIf="puedeEditar"
+            type="button"
+            class="btn-diagrama-guardar"
+            [disabled]="guardandoDiagrama || !tieneCambiosDiagrama"
+            (click)="guardarDiagrama()"
+          >
+            {{ guardandoDiagrama ? 'Guardando...' : 'Guardar' }}
+          </button>
         </div>
+
+        <app-proceso-diagrama-canvas
+          [nodes]="diagramNodes"
+          [arcos]="arcos"
+          [editable]="puedeEditar"
+          (nodeMoveEnd)="onNodoDiagramaMovido($event)"
+        />
+
+        <p *ngIf="puedeEditar" class="diagram-footer">
+          <span *ngIf="tieneCambiosDiagrama">Hay {{ nodosPendientesDiagrama }} nodo(s) pendientes de guardar.</span>
+          <span *ngIf="!tieneCambiosDiagrama">No hay cambios pendientes.</span>
+        </p>
       </section>
     </div>
 
@@ -124,20 +139,12 @@
                 <pre>{{ parsearJson(h.valorAnterior) }}</pre>
               </div>
               <div *ngIf="h.valorNuevo">
-                <small>Después:</small>
+                <small>Despues:</small>
                 <pre>{{ parsearJson(h.valorNuevo) }}</pre>
               </div>
             </div>
           </div>
         </div>
-
-        <button
-          *ngIf="!historialCargando && historialResumen?.hayMas"
-          type="button"
-          class="btn-editar"
-          (click)="cargarMasHistorial()">
-          Cargar mas historial
-        </button>
       </section>
     </div>
 
@@ -159,7 +166,7 @@
             Permiso
             <select [(ngModel)]="sharePermiso">
               <option value="LECTURA">Lectura</option>
-              <option value="EDICION">Edición</option>
+              <option value="EDICION">Edicion</option>
             </select>
           </label>
           <button type="button" class="btn-editar" [disabled]="compartiendo" (click)="compartir()">Compartir</button>
@@ -194,7 +201,7 @@
         <h2>Mensajes catch</h2>
         <div class="mini-form">
           <input [(ngModel)]="nuevoCatch.nombreMensaje" placeholder="Nombre" />
-          <input [(ngModel)]="nuevoCatch.correlacionExpr" placeholder="Correlación / businessKey" />
+          <input [(ngModel)]="nuevoCatch.correlacionExpr" placeholder="Correlacion / businessKey" />
           <label class="chk"><input type="checkbox" [(ngModel)]="nuevoCatch.iniciarNuevaInstancia" /> Nueva instancia</label>
           <button type="button" (click)="crearCatch()">Agregar</button>
         </div>
@@ -202,13 +209,13 @@
           <tr *ngFor="let c of catches">
             <td>{{ c.nombreMensaje }}</td>
             <td>{{ c.correlacionExpr || '—' }}</td>
-            <td>{{ c.iniciarNuevaInstancia ? 'Sí' : 'No' }}</td>
+            <td>{{ c.iniciarNuevaInstancia ? 'Si' : 'No' }}</td>
           </tr>
         </table>
       </section>
 
       <section class="seccion">
-        <h2>Integración externa</h2>
+        <h2>Integracion externa</h2>
         <p class="muted-p">Destinos registrados (mensajes externos globales):</p>
         <ul>
           <li *ngFor="let e of externos">{{ e.id }} — {{ e.destinoTipo }} {{ e.configuracion || '' }}</li>

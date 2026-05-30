@@ -18,17 +18,37 @@
 
         <label>
           <span>Nombre del proceso *</span>
-          <input [(ngModel)]="form.nombre" name="nombre" placeholder="Ej: Proceso de Ventas" required [disabled]="esLector" />
+          <input
+            [(ngModel)]="form.nombre"
+            name="nombre"
+            data-testid="proceso-nombre"
+            placeholder="Ej: Proceso de Ventas"
+            required
+            [disabled]="esLector"
+          />
         </label>
 
         <label>
           <span>Descripción</span>
-          <textarea [(ngModel)]="form.descripcion" name="descripcion" placeholder="Describe el proceso..." rows="3" [disabled]="esLector"></textarea>
+          <textarea
+            [(ngModel)]="form.descripcion"
+            name="descripcion"
+            data-testid="proceso-descripcion"
+            placeholder="Describe el proceso..."
+            rows="3"
+            [disabled]="esLector"
+          ></textarea>
         </label>
 
         <label>
           <span>Categoría *</span>
-          <select [(ngModel)]="form.categoria" name="categoria" required [disabled]="esLector">
+          <select
+            [(ngModel)]="form.categoria"
+            name="categoria"
+            data-testid="proceso-categoria"
+            required
+            [disabled]="esLector"
+          >
             <option value="">Selecciona una categoría</option>
             <option *ngFor="let cat of categorias" [value]="cat">{{ cat }}</option>
           </select>
@@ -36,14 +56,21 @@
 
         <label>
           <span>Estado</span>
-          <select [(ngModel)]="form.estado" name="estado" [disabled]="esLector">
+          <select [(ngModel)]="form.estado" name="estado" data-testid="proceso-estado" [disabled]="esLector">
             <option *ngFor="let e of estados" [value]="e">{{ e }}</option>
           </select>
         </label>
 
         <label>
           <span>Pool del proceso *</span>
-          <select [(ngModel)]="form.poolId" name="poolId" required (ngModelChange)="onPoolChange()" [disabled]="esLector">
+          <select
+            [(ngModel)]="form.poolId"
+            name="poolId"
+            data-testid="proceso-pool"
+            required
+            (ngModelChange)="onPoolChange()"
+            [disabled]="esLector"
+          >
             <option [ngValue]="null">Selecciona un pool</option>
             <option *ngFor="let pool of pools" [ngValue]="pool.id">
               {{ pool.nombre || ('Pool ' + pool.id) }}
@@ -55,30 +82,57 @@
       <section class="form-section">
         <div class="section-title-row">
           <h3>Actividades</h3>
-          <button class="btn-action" type="button" (click)="agregarActividad()" [disabled]="esLector">+ Agregar actividad</button>
+          <button
+            class="btn-action"
+            type="button"
+            data-testid="agregar-actividad"
+            (click)="agregarActividad()"
+            [disabled]="esLector"
+          >
+            + Agregar actividad
+          </button>
         </div>
 
         <p class="hint">Cada actividad debe elegirse dentro de un lane que pertenezca al pool del proceso.</p>
 
         <div *ngIf="!actividades.length" class="vacio">No hay actividades.</div>
 
-        <article *ngFor="let a of actividades; index as i" class="flow-card">
+        <article *ngFor="let a of actividades; index as i" class="flow-card" [attr.data-testid]="'actividad-card-' + i">
           <div class="flow-fields">
             <p class="hint-nodo">Nodo interno: {{ a.nodoId }}</p>
 
             <label>
               <span>Nombre nodo *</span>
-              <input [(ngModel)]="a.nombreNodo" [name]="'actNombre' + i" required (ngModelChange)="onActividadChange()" [disabled]="esLector" />
+              <input
+                [(ngModel)]="a.nombreNodo"
+                [name]="'actNombre' + i"
+                [attr.data-testid]="'actividad-nombre-' + i"
+                required
+                (ngModelChange)="onActividadChange()"
+                [disabled]="esLector"
+              />
             </label>
 
             <label>
               <span>Descripción *</span>
-              <input [(ngModel)]="a.descripcion" [name]="'actDesc' + i" required [disabled]="esLector" />
+              <input
+                [(ngModel)]="a.descripcion"
+                [name]="'actDesc' + i"
+                [attr.data-testid]="'actividad-desc-' + i"
+                required
+                [disabled]="esLector"
+              />
             </label>
 
             <label>
               <span>Lane *</span>
-              <select [(ngModel)]="a.laneId" [name]="'actLane' + i" required [disabled]="esLector || !lanesDisponibles.length">
+              <select
+                [(ngModel)]="a.laneId"
+                [name]="'actLane' + i"
+                [attr.data-testid]="'actividad-lane-' + i"
+                required
+                [disabled]="esLector || !lanesDisponibles.length"
+              >
                 <option [ngValue]="null">Selecciona un lane</option>
                 <option *ngFor="let lane of lanesDisponibles" [ngValue]="lane.id">
                   {{ lane.nombre }}

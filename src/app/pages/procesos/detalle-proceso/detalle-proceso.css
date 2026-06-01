@@ -255,6 +255,27 @@ h2 { margin: 0 0 1rem; font-size: 1.1rem; color: #93c5fd; display: flex; align-i
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 0.5rem; }
 .data-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
 
+.spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 2rem;
+  color: #94a3b8;
+}
+.spinner::before {
+  content: '';
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid rgba(56, 189, 248, 0.25);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 768px) {
   .detalle-shell { padding: 1rem; }
   .encabezado { flex-direction: column; }

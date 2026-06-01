@@ -1,5 +1,5 @@
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PoolResponse } from '../../../models/proceso';
 import { NotificationService } from '../../../services/notification.service';
@@ -16,6 +16,7 @@ import { AuthService } from '../../../services/auth.service';
 export class PoolAdminComponent implements OnInit {
   private readonly poolApi = inject(PoolService);
   private readonly notify = inject(NotificationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   readonly auth = inject(AuthService);
 
   pools: PoolResponse[] = [];
@@ -32,6 +33,8 @@ export class PoolAdminComponent implements OnInit {
   }
 
   cargarPools(): void {
+    this.cargando = true;
+    this.cdr.detectChanges();
     this.poolApi.listar().subscribe({
       next: (p) => {
         this.pools = p;
@@ -39,10 +42,12 @@ export class PoolAdminComponent implements OnInit {
           this.poolApi.setPoolActivoId(p[0].id);
         }
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.notify.error('No se pudieron cargar los pools.');
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -54,6 +59,7 @@ export class PoolAdminComponent implements OnInit {
     }
 
     this.guardando = true;
+    this.cdr.detectChanges();
     this.poolApi.crear({
       nombre: this.nuevoPool.nombre.trim(),
       descripcion: this.nuevoPool.descripcion.trim() || null,
@@ -65,10 +71,12 @@ export class PoolAdminComponent implements OnInit {
         this.nuevoPool = { nombre: '', descripcion: '', esDefault: false };
         this.guardando = false;
         this.cargarPools();
+        this.cdr.detectChanges();
       },
       error: () => {
         this.notify.error('No se pudo crear el pool.');
         this.guardando = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -76,6 +84,7 @@ export class PoolAdminComponent implements OnInit {
   usarComoActivo(poolId: number): void {
     this.poolApi.setPoolActivoId(poolId);
     this.notify.info(`Pool ${poolId} seleccionado como activo.`);
+    this.cdr.detectChanges();
   }
 
   get poolActivoId(): number | null {

@@ -1,8 +1,8 @@
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, Subject, switchMap, takeUntil } from 'rxjs';
 import { LaneRequest, LaneResponse, PoolResponse, RolProcesoResponse } from '../../../models/proceso';
 import { AuthService } from '../../../services/auth.service';
 import { LaneService } from '../../../services/lane.service';
@@ -17,13 +17,15 @@ import { RolProcesoService } from '../../../services/rol-proceso.service';
   templateUrl: './lane-admin.component.html',
   styleUrl: './lane-admin.component.css'
 })
-export class LaneAdminComponent implements OnInit {
+export class LaneAdminComponent implements OnInit, OnDestroy {
   private readonly api = inject(LaneService);
   private readonly poolApi = inject(PoolService);
   private readonly rolApi = inject(RolProcesoService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroy$ = new Subject<void>();
 
   lanes: LaneResponse[] = [];
   pools: PoolResponse[] = [];
@@ -42,30 +44,35 @@ export class LaneAdminComponent implements OnInit {
     this.cargarDatos();
   }
 
-  cargarDatos(): void {
-    const nit = this.auth.getNitEmpresa();
-    if (!nit) return;
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
+  cargarDatos(): void {
     this.cargando = true;
-    this.poolApi.listar().subscribe({
-      next: (pools) => {
-        this.pools = pools;
-        this.rolApi.listarPorEmpresa(nit).subscribe({
-          next: (roles) => {
-            this.roles = roles;
-            this.cargarLanes();
-          },
-          error: () => {
-            this.notify.error('No se pudieron cargar los roles de proceso.');
-            this.cargando = false;
-          }
-        });
-      },
-      error: () => {
-        this.notify.error('No se pudieron cargar los pools.');
-        this.cargando = false;
-      }
-    });
+    this.cdr.detectChanges();
+    this.auth.getNitEmpresaSeguro()
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap((nit) => this.poolApi.listar().pipe(
+          switchMap((pools) => {
+            this.pools = pools;
+            return this.rolApi.listarPorEmpresa(nit);
+          })
+        ))
+      )
+      .subscribe({
+        next: (roles) => {
+          this.roles = roles;
+          this.cargarLanes();
+        },
+        error: () => {
+          this.notify.error('No se pudieron cargar los roles de proceso.');
+          this.cargando = false;
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   cargarLanes(): void {
@@ -73,10 +80,12 @@ export class LaneAdminComponent implements OnInit {
       next: (lanes) => {
         this.lanes = lanes;
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.notify.error('No se pudieron cargar las lanes.');
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -98,7 +107,8 @@ export class LaneAdminComponent implements OnInit {
   guardar(): void {
     const nit = this.auth.getNitEmpresa();
     if (!nit || this.form.invalid) {
-      this.form.markAllAsTouched();
+      if (this.form.invalid) this.form.markAllAsTouched();
+      else this.notify.error('No se pudo obtener la empresa de la sesión.');
       return;
     }
 
@@ -109,6 +119,7 @@ export class LaneAdminComponent implements OnInit {
     }
 
     this.guardando = true;
+    this.cdr.detectChanges();
     const req: LaneRequest = {
       poolId: v.poolId,
       nombre: v.nombre.trim(),
@@ -121,9 +132,11 @@ export class LaneAdminComponent implements OnInit {
         this.notify.exito(this.editandoId != null ? 'Lane actualizada.' : 'Lane creada.');
         this.nuevo();
         this.cargarLanes();
+        this.cdr.detectChanges();
       },
       error: (e: HttpErrorResponse) => {
         this.notify.error(e.error?.message || 'No se pudo guardar.');
+        this.cdr.detectChanges();
       }
     });
   }
@@ -134,9 +147,11 @@ export class LaneAdminComponent implements OnInit {
       next: () => {
         this.notify.exito('Lane eliminada.');
         this.cargarLanes();
+        this.cdr.detectChanges();
       },
       error: (e: HttpErrorResponse) => {
         this.notify.error(e.error?.message || 'No se pudo eliminar.');
+        this.cdr.detectChanges();
       }
     });
   }

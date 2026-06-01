@@ -644,6 +644,7 @@ export class DetalleProcesoComponent implements OnInit {
     if (tab === 'compartir') this.cargarCompartidos(this.proceso.id);
     if (tab === 'historial') this.cargarHistorial(this.proceso.id);
     if (tab === 'mensajes') this.cargarMensajes(this.proceso.id);
+    this.cdr.detectChanges();
   }
 
   crearThrow(): void {

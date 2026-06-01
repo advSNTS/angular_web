@@ -124,7 +124,7 @@
         <p *ngIf="historialResumen" class="muted-p">
           Mostrando {{ historial.length }} de {{ historialResumen.totalCambios }} cambios registrados.
         </p>
-        <div *ngIf="historialCargando" class="vacio">Cargando historial...</div>
+        <div *ngIf="historialCargando" class="spinner"><span>Cargando historial...</span></div>
         <div *ngIf="!historialCargando && historial.length === 0" class="vacio">Sin historial registrado</div>
 
         <div *ngIf="!historialCargando" class="lista-historial">
@@ -151,7 +151,7 @@
     <div *ngIf="tabActiva === 'compartir' && puedeCompartir" class="tab-contenido">
       <section class="seccion">
         <h2>Compartir con otro pool</h2>
-        <div *ngIf="compartidosCargando" class="vacio">Cargando pools y comparticiones...</div>
+        <div *ngIf="compartidosCargando" class="spinner"><span>Cargando pools y comparticiones...</span></div>
         <div class="share-form">
           <label>
             Pool destino
@@ -183,7 +183,7 @@
     <div *ngIf="tabActiva === 'mensajes'" class="tab-contenido">
       <section class="seccion">
         <h2>Mensajes throw</h2>
-        <div *ngIf="mensajesCargando" class="vacio">Cargando mensajes y tareas...</div>
+        <div *ngIf="mensajesCargando" class="spinner"><span>Cargando mensajes y tareas...</span></div>
         <div class="mini-form">
           <input [(ngModel)]="nuevoThrow.nombreMensaje" placeholder="Nombre del mensaje" />
           <input [(ngModel)]="nuevoThrow.payloadTemplate" placeholder="Payload (opcional)" />

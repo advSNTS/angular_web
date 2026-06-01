@@ -1,8 +1,8 @@
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, Subject, switchMap, takeUntil } from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { EmpleadoEmpresaService } from '../../../services/empleado-empresa.service';
 import { NotificationService } from '../../../services/notification.service';
@@ -17,18 +17,20 @@ import { EmpleadoResponse, RolProcesoResponse } from '../../../models/proceso';
   templateUrl: './usuarios-empresa.component.html',
   styleUrl: './usuarios-empresa.component.css'
 })
-export class UsuariosEmpresaComponent implements OnInit {
+export class UsuariosEmpresaComponent implements OnInit, OnDestroy {
   private readonly empleadosApi = inject(EmpleadoEmpresaService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
   private readonly rolProceso = inject(RolProcesoService);
   private readonly rolXEmpleado = inject(RolXEmpleadoService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroy$ = new Subject<void>();
 
   usuarios: EmpleadoResponse[] = [];
   rolesFuncionales: RolProcesoResponse[] = [];
-  rolesActuales: Record<number, string> = {};  // ← nuevo
-  esAdmin = false;                              // ← nuevo
+  rolesActuales: Record<number, string> = {};
+  esAdmin = false;
   cargando = true;
   invitando = false;
   asignando: Record<number, boolean> = {};
@@ -44,27 +46,44 @@ export class UsuariosEmpresaComponent implements OnInit {
   readonly asignacionForms: Record<number, FormGroup> = {};
 
   ngOnInit(): void {
-    this.esAdmin = this.auth.esAdmin();  // ← nuevo
+    this.esAdmin = this.auth.esAdmin();
     this.cargar();
   }
 
-  cargar(): void {
-    const nit = this.auth.getNitEmpresa();
-    if (!nit) return;
-    this.cargando = true;
-    this.empleadosApi.listarPorEmpresa(nit).subscribe({
-      next: (u) => {
-        this.usuarios = u;
-        this.rolesFuncionalesSub(nit);
-      },
-      error: () => {
-        this.notify.error('No se pudieron cargar los usuarios.');
-        this.cargando = false;
-      }
-    });
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  private rolesFuncionalesSub(nit: string): void {
+  cargar(): void {
+    this.cargando = true;
+    this.cdr.detectChanges();
+    this.auth.getNitEmpresaSeguro()
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap((nit) => this.empleadosApi.listarPorEmpresa(nit))
+      )
+      .subscribe({
+        next: (u) => {
+          this.usuarios = u;
+          this.cargarRolesFuncionales();
+        },
+        error: () => {
+          this.notify.error('No se pudieron cargar los usuarios.');
+          this.cargando = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  private cargarRolesFuncionales(): void {
+    const nit = this.auth.getNitEmpresa();
+    if (!nit) {
+      this.cargando = false;
+      this.notify.error('No se pudo obtener la empresa de la sesión.');
+      this.cdr.detectChanges();
+      return;
+    }
     this.rolProceso.listarPorEmpresa(nit).subscribe({
       next: (r) => {
         this.rolesFuncionales = r;
@@ -74,21 +93,23 @@ export class UsuariosEmpresaComponent implements OnInit {
               rolId: this.fb.control<number | null>(null)
             });
           }
-          // ← nuevo: cargar rol actual de cada empleado
           this.rolXEmpleado.porEmpleado(emp.id).subscribe({
             next: (roles) => {
               this.rolesActuales[emp.id] = roles.length > 0
                 ? roles.map(r => `${r.nombreRol ?? '?'} (${r.permiso ?? ''})`).join(', ')
                 : 'Sin rol';
+              this.cdr.detectChanges();
             },
-            error: () => { this.rolesActuales[emp.id] = 'Sin rol'; }
+            error: () => { this.rolesActuales[emp.id] = 'Sin rol'; this.cdr.detectChanges(); }
           });
         }
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.rolesFuncionales = [];
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -96,11 +117,13 @@ export class UsuariosEmpresaComponent implements OnInit {
   invitar(): void {
     const nit = this.auth.getNitEmpresa();
     if (!nit || this.invitarForm.invalid) {
-      this.invitarForm.markAllAsTouched();
+      if (this.invitarForm.invalid) this.invitarForm.markAllAsTouched();
+      else this.notify.error('No se pudo obtener la empresa de la sesión.');
       return;
     }
     const v = this.invitarForm.getRawValue();
     this.invitando = true;
+    this.cdr.detectChanges();
     this.empleadosApi
       .invitar({
         nitEmpresa: nit,
@@ -115,6 +138,7 @@ export class UsuariosEmpresaComponent implements OnInit {
           this.notify.exito('Usuario creado. Asígnale un rol funcional desde la lista.');
           this.invitarForm.reset({ tipoDocumento: 'CC', nombre: '', numeroDocumento: '', correo: '', contrasena: '' });
           this.cargar();
+          this.cdr.detectChanges();
         },
         error: (e: HttpErrorResponse) => {
           this.notify.error(
@@ -122,6 +146,7 @@ export class UsuariosEmpresaComponent implements OnInit {
               ? String((e.error as { message: string }).message)
               : 'No se pudo crear el usuario.'
           );
+          this.cdr.detectChanges();
         }
       });
   }
@@ -134,22 +159,26 @@ export class UsuariosEmpresaComponent implements OnInit {
       return;
     }
     this.asignando[empleadoId] = true;
+    this.cdr.detectChanges();
     this.rolXEmpleado
       .asignar({ empleadoId, rolId })
       .pipe(finalize(() => (this.asignando[empleadoId] = false)))
       .subscribe({
         next: () => {
           this.notify.exito('Rol funcional asignado.');
-          // refrescar el rol mostrado
           this.rolXEmpleado.porEmpleado(empleadoId).subscribe({
             next: (roles) => {
               this.rolesActuales[empleadoId] = roles.length > 0
                 ? roles.map(r => `${r.nombreRol ?? '?'} (${r.permiso ?? ''})`).join(', ')
                 : 'Sin rol';
+              this.cdr.detectChanges();
             }
           });
         },
-        error: () => this.notify.error('No se pudo asignar el rol.')
+        error: () => {
+          this.notify.error('No se pudo asignar el rol.');
+          this.cdr.detectChanges();
+        }
       });
   }
 }

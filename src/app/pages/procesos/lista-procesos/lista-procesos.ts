@@ -151,7 +151,11 @@ export class ListaProcesosComponent implements OnInit {
   }
 
   nuevo(): void {
-    void this.router.navigate(['/procesos/nuevo']);
+    this.router.navigate(['/procesos/nuevo']).then((ok) => {
+      if (!ok) {
+        this.notify.error('No se pudo navegar al editor de proceso.');
+      }
+    });
   }
 
   eliminar(proceso: ProcesoResponse, ev: Event): void {

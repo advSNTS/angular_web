@@ -1,8 +1,8 @@
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, Subject, switchMap, takeUntil } from 'rxjs';
 import { PermisoRol, RolProcesoResponse } from '../../models/proceso';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
@@ -15,11 +15,13 @@ import { RolProcesoService } from '../../services/rol-proceso.service';
   templateUrl: './roles-proceso-page.component.html',
   styleUrl: './roles-proceso-page.component.css'
 })
-export class RolesProcesoPageComponent implements OnInit {
+export class RolesProcesoPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(RolProcesoService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroy$ = new Subject<void>();
 
   roles: RolProcesoResponse[] = [];
   cargando = true;
@@ -36,20 +38,31 @@ export class RolesProcesoPageComponent implements OnInit {
     this.cargar();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   cargar(): void {
-    const nit = this.auth.getNitEmpresa();
-    if (!nit) return;
     this.cargando = true;
-    this.api.listarPorEmpresa(nit).subscribe({
-      next: (r) => {
-        this.roles = r;
-        this.cargando = false;
-      },
-      error: () => {
-        this.notify.error('No se pudieron cargar los roles.');
-        this.cargando = false;
-      }
-    });
+    this.cdr.detectChanges();
+    this.auth.getNitEmpresaSeguro()
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap((nit) => this.api.listarPorEmpresa(nit))
+      )
+      .subscribe({
+        next: (r) => {
+          this.roles = r;
+          this.cargando = false;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.notify.error('No se pudieron cargar los roles.');
+          this.cargando = false;
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   nuevo(): void {
@@ -69,11 +82,13 @@ export class RolesProcesoPageComponent implements OnInit {
   guardar(): void {
     const nit = this.auth.getNitEmpresa();
     if (!nit || this.form.invalid) {
-      this.form.markAllAsTouched();
+      if (this.form.invalid) this.form.markAllAsTouched();
+      else this.notify.error('No se pudo obtener la empresa de la sesión.');
       return;
     }
     const v = this.form.getRawValue();
     this.guardando = true;
+    this.cdr.detectChanges();
     const req = {
       nitEmpresa: nit,
       nombre: v.nombre.trim(),
@@ -89,9 +104,11 @@ export class RolesProcesoPageComponent implements OnInit {
         this.notify.exito(this.editandoId != null ? 'Rol actualizado.' : 'Rol creado.');
         this.nuevo();
         this.cargar();
+        this.cdr.detectChanges();
       },
       error: (e: HttpErrorResponse) => {
         this.notify.error(e.error?.message || 'No se pudo guardar.');
+        this.cdr.detectChanges();
       }
     });
   }
@@ -102,6 +119,7 @@ export class RolesProcesoPageComponent implements OnInit {
       next: () => {
         this.notify.exito('Rol eliminado.');
         this.cargar();
+        this.cdr.detectChanges();
       },
       error: (e: HttpErrorResponse) => {
         if (e.status === 409) {
@@ -111,6 +129,7 @@ export class RolesProcesoPageComponent implements OnInit {
         } else {
           this.notify.error(e.error?.message || 'No se pudo eliminar.');
         }
+        this.cdr.detectChanges();
       }
     });
   }

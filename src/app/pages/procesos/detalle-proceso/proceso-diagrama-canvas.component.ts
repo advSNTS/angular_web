@@ -141,12 +141,36 @@ export class ProcesoDiagramaCanvasComponent {
     const ux = dx / distance;
     const uy = dy / distance;
 
-    const startX = from.x + ux * (origin.width / 2);
-    const startY = from.y + uy * (origin.height / 2);
-    const endX = to.x - ux * (destination.width / 2);
-    const endY = to.y - uy * (destination.height / 2);
+    const start = this.getEdgePoint(origin, from, ux, uy);
+    const end = this.getEdgePoint(destination, to, -ux, -uy);
 
-    return `M ${startX.toFixed(1)} ${startY.toFixed(1)} L ${endX.toFixed(1)} ${endY.toFixed(1)}`;
+    return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} L ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+  }
+
+  private getEdgePoint(
+    node: DiagramaNodoCanvas,
+    center: { x: number; y: number },
+    ux: number,
+    uy: number
+  ): { x: number; y: number } {
+    if (node.tipo === 'GATEWAY') {
+      const hw = node.width / 2;
+      const hh = node.height / 2;
+      const denom = Math.abs(ux) / hw + Math.abs(uy) / hh;
+      if (denom <= 0) {
+        return { x: center.x, y: center.y };
+      }
+      const t = 1 / denom;
+      return {
+        x: center.x + ux * t,
+        y: center.y + uy * t
+      };
+    }
+
+    return {
+      x: center.x + ux * (node.width / 2),
+      y: center.y + uy * (node.height / 2)
+    };
   }
 
   private findNode(nodeId: number): DiagramaNodoCanvas | undefined {

@@ -124,10 +124,85 @@
 }
 
 .canvas-node.gateway {
-  border-radius: 0.6rem;
+  border-radius: 0;
+  padding: 26px 8px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.canvas-node.gateway::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  z-index: 0;
+  transition:
+    background 0.22s ease,
+    filter 0.22s ease;
+}
+
+.canvas-node.gateway:hover::before {
+  filter: brightness(1.25);
+}
+
+.canvas-node.gateway.dragging::before {
+  filter: brightness(1.35) saturate(1.3);
+}
+
+.canvas-node.gateway-xor::before {
   background:
-    linear-gradient(135deg, rgba(34, 197, 94, 0.16), rgba(15, 23, 42, 0.98) 58%),
-    rgba(15, 23, 42, 0.98);
+    linear-gradient(135deg, rgba(251, 191, 36, 0.28), rgba(30, 30, 10, 0.96) 60%),
+    rgba(20, 20, 10, 0.96);
+  border: 1.8px solid rgba(251, 191, 36, 0.55);
+}
+
+.canvas-node.gateway-and::before {
+  background:
+    linear-gradient(135deg, rgba(34, 197, 94, 0.28), rgba(10, 30, 15, 0.96) 60%),
+    rgba(10, 20, 10, 0.96);
+  border: 1.8px solid rgba(34, 197, 94, 0.55);
+}
+
+.canvas-node.gateway-or::before {
+  background:
+    linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(10, 20, 35, 0.96) 60%),
+    rgba(10, 20, 30, 0.96);
+  border: 1.8px solid rgba(56, 189, 248, 0.55);
+}
+
+.gateway-symbol {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+  z-index: 1;
+}
+
+.canvas-node.gateway-xor .gateway-symbol {
+  color: #fbbf24;
+}
+
+.canvas-node.gateway-and .gateway-symbol {
+  color: #4ade80;
+}
+
+.canvas-node.gateway-or .gateway-symbol {
+  color: #7dd3fc;
+}
+
+.gw-title {
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: #e2e8f0;
+  margin-top: 0.35rem;
+  z-index: 1;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .node-kicker {
@@ -135,10 +210,6 @@
   letter-spacing: 0.16em;
   color: #93c5fd;
   text-transform: uppercase;
-}
-
-.canvas-node.gateway .node-kicker {
-  color: #86efac;
 }
 
 .node-title {

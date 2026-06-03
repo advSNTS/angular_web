@@ -394,8 +394,8 @@ export class DetalleProcesoComponent implements OnInit {
       }
 
       const esActividad = Boolean(actividad);
-      const width = esActividad ? 220 : 180;
-      const height = esActividad ? 96 : 124;
+      const width = esActividad ? 220 : 160;
+      const height = esActividad ? 96 : 160;
       const fallback = this.calcularPosicionInicial(indiceFallback);
       indiceFallback += 1;
 
@@ -411,6 +411,7 @@ export class DetalleProcesoComponent implements OnInit {
         tipo: esActividad ? 'ACTIVIDAD' : 'GATEWAY',
         nombre: actividad?.nombreNodo ?? gateway?.nombreNodo ?? nodo.nombre,
         subtitulo,
+        gatewayTipo: esActividad ? undefined : gateway!.tipoGateway,
         x,
         y,
         width,

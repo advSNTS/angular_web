@@ -6,6 +6,7 @@
       <span class="rol-pill">{{ rolLabel }}</span>
     </div>
     <nav class="nav">
+      <a routerLink="/dashboard" routerLinkActive="activo">Dashboard</a>
       <a routerLink="/procesos" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }">Procesos</a>
       @if (puedeEditar) {
         <a routerLink="/roles-proceso" routerLinkActive="activo">Roles de proceso</a>

@@ -6,6 +6,7 @@ export interface DiagramaNodoCanvas {
   tipo: DiagramaNodoTipo;
   nombre: string;
   subtitulo: string;
+  gatewayTipo?: 'XOR' | 'AND' | 'OR';
   x: number;
   y: number;
   width: number;

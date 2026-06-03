@@ -281,3 +281,24 @@ export interface VerificacionCorreoResponse {
   correo?: string;
   mensaje?: string;
 }
+
+export interface CambioReciente {
+  tipoAccion: string;
+  fechaCambio: string;
+  nombreProceso: string;
+  nombreEmpleado: string;
+}
+
+export interface DashboardMetrics {
+  totalProcesos: number;
+  procesosBorrador: number;
+  procesosPublicado: number;
+  procesosInactivo: number;
+  totalEmpleados: number;
+  totalActividades: number;
+  totalGateways: number;
+  totalPools: number;
+  totalLanes: number;
+  totalArcos: number;
+  cambiosRecientes: CambioReciente[];
+}

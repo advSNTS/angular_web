@@ -36,6 +36,9 @@
           class="canvas-node"
           [class.activity]="node.tipo === 'ACTIVIDAD'"
           [class.gateway]="node.tipo === 'GATEWAY'"
+          [class.gateway-xor]="node.gatewayTipo === 'XOR'"
+          [class.gateway-and]="node.gatewayTipo === 'AND'"
+          [class.gateway-or]="node.gatewayTipo === 'OR'"
           [class.dragging]="draggingNodeId === node.id"
           [style.left.px]="node.x"
           [style.top.px]="node.y"
@@ -44,9 +47,15 @@
           [attr.aria-disabled]="!editable"
           (pointerdown)="onNodePointerDown(node, $event)"
         >
-          <span class="node-kicker">{{ node.tipo }}</span>
-          <span class="node-title">{{ node.nombre }}</span>
-          <span class="node-subtitle" *ngIf="node.subtitulo">{{ node.subtitulo }}</span>
+          <ng-container *ngIf="node.tipo === 'GATEWAY'; else actividadContent">
+            <span class="gateway-symbol" [innerHTML]="node.gatewayTipo === 'XOR' ? '&#10005;' : node.gatewayTipo === 'AND' ? '&#10009;' : '&#9711;'"></span>
+            <span class="node-title gw-title">{{ node.nombre }}</span>
+          </ng-container>
+          <ng-template #actividadContent>
+            <span class="node-kicker">{{ node.tipo }}</span>
+            <span class="node-title">{{ node.nombre }}</span>
+            <span class="node-subtitle" *ngIf="node.subtitulo">{{ node.subtitulo }}</span>
+          </ng-template>
         </button>
       </ng-container>
 

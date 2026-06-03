@@ -1,32 +1,134 @@
 <main class="dashboard-shell">
   <section class="panel">
-    <p class="eyebrow">Sesión activa</p>
+    <p class="eyebrow">Dashboard</p>
     <h1>Bienvenido, {{ session?.nombre }}</h1>
-    <p class="lead">
-      La interfaz quedó lista para trabajar con el backend actual. La información de sesión
-      que ves aquí proviene de la respuesta de <code>/empleados</code>.
-    </p>
+    <p class="lead">{{ session?.nombreEmpresa || '—' }}</p>
 
-    <div class="grid">
-      <div>
-        <span>Empresa</span>
-        <strong>{{ session?.nombreEmpresa || 'Pendiente de retorno del backend' }}</strong>
-      </div>
-      <div>
-        <span>NIT</span>
-        <strong>{{ session?.nitEmpresa }}</strong>
-      </div>
-      <div>
-        <span>Documento</span>
-        <strong>{{ session?.tipoDocumento }} {{ session?.numeroDocumento }}</strong>
-      </div>
-      <div>
-        <span>Correo</span>
-        <strong>{{ session?.correo }}</strong>
-      </div>
-    </div>
+    <div *ngIf="cargando" class="spinner">Cargando metricas...</div>
+    <div *ngIf="error && !cargando" class="alerta-error">{{ error }}</div>
 
-    <button type="button" (click)="cerrarSesion()">Cerrar sesión</button>
+    <ng-container *ngIf="metrics && !cargando">
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-value">{{ metrics.totalProcesos }}</span>
+          <span class="metric-label">Procesos totales</span>
+        </div>
+        <div class="metric-card accent-green">
+          <span class="metric-value">{{ metrics.procesosPublicado }}</span>
+          <span class="metric-label">Publicados</span>
+        </div>
+        <div class="metric-card accent-amber">
+          <span class="metric-value">{{ metrics.procesosBorrador }}</span>
+          <span class="metric-label">Borradores</span>
+        </div>
+        <div class="metric-card accent-slate">
+          <span class="metric-value">{{ metrics.procesosInactivo }}</span>
+          <span class="metric-label">Inactivos</span>
+        </div>
+        <div class="metric-card accent-blue">
+          <span class="metric-value">{{ metrics.totalEmpleados }}</span>
+          <span class="metric-label">Empleados</span>
+        </div>
+        <div class="metric-card accent-purple">
+          <span class="metric-value">{{ metrics.totalActividades }}</span>
+          <span class="metric-label">Actividades</span>
+        </div>
+        <div class="metric-card accent-lime">
+          <span class="metric-value">{{ metrics.totalGateways }}</span>
+          <span class="metric-label">Gateways</span>
+        </div>
+        <div class="metric-card accent-sky">
+          <span class="metric-value">{{ metrics.totalArcos }}</span>
+          <span class="metric-label">Arcos</span>
+        </div>
+        <div class="metric-card accent-pink">
+          <span class="metric-value">{{ metrics.totalPools }}</span>
+          <span class="metric-label">Pools</span>
+        </div>
+        <div class="metric-card accent-orange">
+          <span class="metric-value">{{ metrics.totalLanes }}</span>
+          <span class="metric-label">Lanes</span>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-panel">
+          <h3 class="chart-title">Distribucion general</h3>
+          <div class="bar-chart">
+            <div class="bar-row" *ngFor="let b of barItems">
+              <span class="bar-label">{{ b.label }}</span>
+              <div class="bar-track">
+                <div
+                  class="bar-fill"
+                  [style.width.%]="b.pct"
+                  [style.background]="b.color"
+                ></div>
+              </div>
+              <span class="bar-value">{{ b.value }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-panel donut-panel">
+          <h3 class="chart-title">Estado de procesos</h3>
+          <svg
+            class="donut-svg"
+            viewBox="0 0 140 140"
+            width="140"
+            height="140"
+          >
+            <circle
+              class="donut-bg"
+              cx="70" cy="70"
+              [attr.r]="donutRadius"
+              fill="none"
+              stroke="rgba(148,163,184,0.12)"
+              stroke-width="18"
+            />
+            <circle
+              *ngFor="let seg of donutSegments; let i = index"
+              cx="70" cy="70"
+              [attr.r]="donutRadius"
+              fill="none"
+              [attr.stroke]="seg.color"
+              stroke-width="18"
+              stroke-linecap="butt"
+              [attr.stroke-dasharray]="seg.dashArray"
+              [attr.stroke-dashoffset]="seg.dashOffset"
+              transform="rotate(-90 70 70)"
+            />
+            <text x="70" y="66" class="donut-center-value" text-anchor="middle">
+              {{ metrics.totalProcesos }}
+            </text>
+            <text x="70" y="82" class="donut-center-label" text-anchor="middle">
+              procesos
+            </text>
+          </svg>
+          <div class="donut-legend">
+            <div class="legend-item" *ngFor="let seg of donutSegments">
+              <span class="legend-dot" [style.background]="seg.color"></span>
+              <span class="legend-label">{{ seg.label }}</span>
+              <span class="legend-pct">{{ seg.pct }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="section-title" *ngIf="metrics.cambiosRecientes.length">Cambios recientes</h2>
+      <div class="cambios-list" *ngIf="metrics.cambiosRecientes.length">
+        <div class="cambio-item" *ngFor="let c of metrics.cambiosRecientes">
+          <div class="cambio-header">
+            <span class="cambio-accion">{{ c.tipoAccion }}</span>
+            <span class="cambio-proceso">{{ c.nombreProceso }}</span>
+          </div>
+          <div class="cambio-meta">
+            <span class="cambio-fecha">{{ c.fechaCambio | slice:0:10 }}</span>
+            <span class="cambio-empleado">{{ c.nombreEmpleado }}</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <button type="button" class="btn-logout" (click)="cerrarSesion()">Cerrar sesion</button>
   </section>
 </main>
-

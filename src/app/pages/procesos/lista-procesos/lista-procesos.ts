@@ -63,8 +63,14 @@ export class ListaProcesosComponent implements OnInit {
         switchMap(() => this.poolService.listar()),
         switchMap((pools) => {
           this.pools = pools;
+          const poolGuardado = this.poolService.getPoolActivoId();
+          const poolValido = poolGuardado != null && pools.some((p) => p.id === poolGuardado);
           const activo =
-            this.poolService.getPoolActivoId() ?? pools.find((p) => p.esDefault)?.id ?? pools[0]?.id ?? null;
+            (poolValido ? poolGuardado : null) ??
+            pools.find((p) => p.esDefault)?.id ??
+            pools[0]?.id ??
+            null;
+
           this.poolActivoId = activo;
           this.poolService.setPoolActivoId(activo);
           return activo != null ? this.procesoService.obtenerPorPool(activo) : this.procesoService.obtenerTodos();

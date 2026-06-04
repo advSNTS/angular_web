@@ -8,6 +8,7 @@ import { rolesDesdeAuthorities } from '../core/roles.util';
 import { EmpleadoAuthResponse, LoginCredentials } from '../models/empleado-auth.model';
 
 const SESSION_KEY = 'angular_web_employee_session';
+const ACTIVE_POOL_KEY = 'angular_web_active_pool_id';
 
 @Injectable({
   providedIn: 'root'
@@ -128,6 +129,7 @@ getNitEmpresaSeguro(): Observable<string> {
     }
 
     window.sessionStorage.removeItem(SESSION_KEY);
+    window.sessionStorage.removeItem(ACTIVE_POOL_KEY);
   }
 
   private normalizeSession(response: unknown): EmpleadoAuthResponse {
